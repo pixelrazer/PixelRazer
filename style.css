@@ -1,0 +1,249 @@
+/* General Styles */
+body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #121212;
+    color: #fff;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+
+/* Navbar */
+/* Navbar Styles */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%; /* Ensure the navbar spans the full viewport width */
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap if space is insufficient */
+    justify-content: space-between; /* Align content evenly */
+    align-items: center;
+    padding: 20px 30px;
+    z-index: 1000;
+    transition: top 0.3s;
+    box-sizing: border-box; /* Include padding in width calculations */
+}
+
+/* Navbar Links */
+.nav-links {
+    display: flex;
+    flex-wrap: wrap; /* Allow links to wrap when zoomed */
+    gap: 15px; /* Add spacing between links */
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-links li {
+    display: inline-block;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: #ccc;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: #fff;
+}
+
+/* Contact Button */
+.contact-btn {
+    background-color: #ff5722;
+    color: #fff;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+    white-space: nowrap; /* Prevent text wrapping in the button */
+}
+
+.contact-btn:hover {
+    background-color: #ff784e;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column; /* Stack items vertically on smaller screens */
+        align-items: stretch;
+    }
+
+    .nav-links {
+        justify-content: center;
+    }
+}
+
+
+/* Hero Section */
+.hero {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    border-radius: 2%;
+    overflow: hidden;
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('anime.png') center/cover no-repeat;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+}
+
+/* About Section */
+.about {
+    background-color: #282846;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+    margin-top: 20px;
+}
+
+.about h1 {
+    color: #ff6473;
+    font-size: 2rem;
+    margin-bottom: 10px;
+    text-align: center;
+    padding: auto;
+}
+
+.about p {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.about ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.about li {
+  background-color: #3c3c5c;
+  padding: 10px 20px;
+  border-radius: 4px;
+}
+
+/* Profile Section */
+.profile-section {
+  background-color: #1c1c1c;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+.profile-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin-bottom: 15px;
+}
+  
+.profile-description {
+  margin: 10px 0;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+  
+.github-button {
+  display: inline-block;
+  margin: 10px 0;
+  padding: 10px 15px;
+  background-color: #333;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
+}
+
+.github-button:hover {
+  background-color: #444;
+}
+  
+.categories {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  text-align: left;
+}
+  
+.categories li {
+  margin: 10px 0;
+  font-size: 0.9rem;
+}
+  
+.categories li span {
+  float: right;
+  color: #aaa;
+}
+  
+  /* Write-Ups Section */
+.write-ups-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+  
+.write-up-card {
+  background-color: #1c1c1c;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+  
+.write-up-card:hover {
+  transform: translateY(-10px);
+}
+  
+.card-image {
+  width: 100%;
+  height: 50%;
+  object-fit: cover;
+}
+  
+.card-content {
+  padding: 10px;
+}
+  
+.card-content h3 {
+  margin: 0 0 10px;
+  font-size: 1.5rem;
+}
+  
+.metadata {
+  font-size: 0.9rem;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+  
+.metadata span {
+  display: inline-block;
+  margin-right: 10px;
+}
+  
+.card-content p {
+  margin: 0;
+  line-height: 1.5;
+  color: #ccc;
+}
