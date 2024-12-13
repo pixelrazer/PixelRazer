@@ -198,27 +198,43 @@ body {
 }
   
   /* Write-Ups Section */
-.write-ups-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
+.write-ups {
+  margin-top: 70px;
 }
-  
+
+.write-ups h2 {
+  text-align: center;
+}
+
+.write-ups-container {
+  width: 100%; /* Ensure container spans the full width */
+  display: flex;
+  flex-direction: column; /* Stack items vertically */
+  align-items: flex-end; /* Align items to the right side */
+  gap: 20px; /* Add spacing between the cards */
+}
+
 .write-up-card {
   background-color: #1c1c1c;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease;
+  width: 100%; /* Adjust width as needed */
+  max-width: 700px; /* Optional: Limit the card width */
+  height: 250px;
+  box-sizing: border-box; /* Include padding and borders in width */
+  text-align: center;
+  margin: 20px;
+  padding: 10px;
 }
-  
 .write-up-card:hover {
   transform: translateY(-10px);
 }
   
 .card-image {
-  width: 100%;
-  height: 50%;
+  width: 200px;
+  height: auto;
   object-fit: cover;
 }
   
@@ -246,4 +262,29 @@ body {
   margin: 0;
   line-height: 1.5;
   color: #ccc;
+}
+
+/* Write up Profile */
+
+.profile {
+  transition: transform 0.3s ease;
+  background-color: #1c1c1c;
+  border-radius: 10px;
+  width: 300px;
+  padding: 50px;
+  margin: 20px;
+  text-align: center;
+  margin-top: 70px;
+  position: absolute;
+
+}
+
+.profile img {
+  width: 300px;
+  height: 300px;
+  border-radius: 70%;
+}
+
+.profile:hover {
+  transform: translateY(-10px);
 }
