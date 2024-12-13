@@ -1,15 +1,40 @@
 // Smooth scrolling
 document.querySelectorAll('.nav-links a').forEach(link => {
-    link.addEventListener('click', function (e) {
-        e.preventDefault();
-        const targetId = this.getAttribute('href').substring(1);
-        const targetElement = document.getElementById(targetId);
+    const href = link.getAttribute('href');
+    if (href.startsWith('#')) {  // Only process anchor links
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetId = href.substring(1);
+            const targetElement = document.getElementById(targetId);
 
-        if (targetElement) {
-            window.scrollTo({
-                top: targetElement.offsetTop - 60,
-                behavior: 'smooth'
-            });
+            if (targetElement) {
+                window.scrollTo({
+                    top: targetElement.offsetTop - 60,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
+});
+
+// Navbar highlight
+const navbarLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+    const fromTop = window.scrollY;
+    navbarLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href.startsWith('#')) {  // Only process anchor links
+            const section = document.querySelector(href);
+            if (section) {
+                if (
+                    section.offsetTop <= fromTop + 60 &&
+                    section.offsetTop + section.offsetHeight > fromTop + 60
+                ) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            }
         }
     });
 });
@@ -41,24 +66,3 @@ if (greetingElement) {
         greetingElement.textContent = 'Good Evening! I am Pixelrazer.';
     }
 }
-
-// Active link highlight
-const navbarLinks = document.querySelectorAll('.nav-links a');
-
-window.addEventListener('scroll', () => {
-    const fromTop = window.scrollY;
-
-    navbarLinks.forEach(link => {
-        const section = document.querySelector(link.getAttribute('href'));
-        if (section) {
-            if (
-                section.offsetTop <= fromTop + 60 &&
-                section.offsetTop + section.offsetHeight > fromTop + 60
-            ) {
-                link.classList.add('active');
-            } else {
-                link.classList.remove('active');
-            }
-        }
-    });
-});
