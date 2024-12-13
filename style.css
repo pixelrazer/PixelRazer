@@ -96,6 +96,7 @@ body {
     height: 100vh;
     border-radius: 2%;
     overflow: hidden;
+    margin-top: 70px;
     background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('anime.png') center/cover no-repeat;
     text-align: center;
 }
