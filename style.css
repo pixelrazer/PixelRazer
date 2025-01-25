@@ -244,3 +244,23 @@ a:active {
     height: auto;
     margin-bottom: 10px;
 }
+
+.code-snippet pre {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #1e1e1e; /* Optional: Match your theme */
+    color: #cfcfcf;           /* Optional: Match your text color */
+    padding: 10px;
+    border-radius: 5px;
+    overflow: auto;
+}
+
+.code-block {
+    background-color: #1e1e1e; /* Dark background */
+    color: #cfcfcf;           /* Light gray text */
+    font-family: 'Courier New', Courier, monospace; /* Monospace font for alignment */
+    padding: 10px;            /* Add padding for readability */
+    border-radius: 5px;       /* Rounded corners */
+    overflow: auto;           /* Scrollable if content overflows */
+    white-space: pre-wrap;    /* Preserve formatting while wrapping long lines */
+    border: 1px solid #333;   /* Optional border for contrast */
+}

