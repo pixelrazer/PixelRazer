@@ -179,7 +179,6 @@ body {
 
 /* link write ups */
 a {
-    text-decoration: none; /* Removes the underline */
     color: inherit; /* Inherits the text color from the parent */
 }
 
@@ -263,4 +262,16 @@ a:active {
     overflow: auto;           /* Scrollable if content overflows */
     white-space: pre-wrap;    /* Preserve formatting while wrapping long lines */
     border: 1px solid #333;   /* Optional border for contrast */
+}
+
+code {
+    font-size: 100%;
+    background-color: #1e1e1e;
+    color: #cfcfcf;
+    font-family: 'Courier New', Courier, monospace;
+    padding: auto;
+    border-radius: 1px;
+    overflow: auto;
+    white-space: pre-wrap;
+    border: 1px solid #333;
 }
