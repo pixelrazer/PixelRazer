@@ -275,3 +275,17 @@ code {
     white-space: pre-wrap;
     border: 1px solid #333;
 }
+
+.htb-banner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    height: 100px;
+    background-color: #121212; /* Optional dark background */
+}
+
+.htb-badge img {
+    width: 300px; /* Adjust size as needed */
+    max-width: 100%; /* Ensures responsiveness */
+}

@@ -52,17 +52,3 @@ window.addEventListener('scroll', () => {
     }
     prevScrollPos = currentScrollPos;
 });
-
-// Dynamic greeting
-const greetingElement = document.getElementById('greeting');
-const hours = new Date().getHours();
-
-if (greetingElement) {
-    if (hours >= 5 && hours < 12) {
-        greetingElement.textContent = 'Good Morning! I am Pixelrazer.';
-    } else if (hours >= 12 && hours < 18) {
-        greetingElement.textContent = 'Good Afternoon! I am Pixelrazer.';
-    } else {
-        greetingElement.textContent = 'Good Evening! I am Pixelrazer.';
-    }
-}

