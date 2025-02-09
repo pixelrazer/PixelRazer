@@ -24,7 +24,6 @@
                 <img src="images/data.png" alt="Data">
             </div>
             <p>This box is from vulnlab which begins with leveraging a public exploit that allows Directory Traversal and Arbitrary File Read. Using this, we retrieve a SQL database file, decrypt the stored credentials, and log in as a valid user. Upon gaining access, we discover that the user is operating within a containerized environment. From there, we escalate privileges to root within a second container. Finally, by mounting the host filesystem from the container, we successfully escape the container environment, gain full access to the host's filesystem, and retrieve the root flag.</p>
-            
             <h2>Enumeration</h2>
             <h3>Nmap Scan</h3>
             <div class="snippet">

