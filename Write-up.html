@@ -12,12 +12,17 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar">
-        <ul class="nav-links">
-            <li><a href="./index.html"><i class="fas fa-home"></i> Home</a></li>
-            <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
-            <li><a href="redteam.html"><i class="fas fa-user-secret"></i> Red Team</a></li>
-        </ul>
+    <nav style="position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px clamp(20px,5vw,56px);background:rgba(10,10,15,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)">
+      <a href="./index.html" style="display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;letter-spacing:1px">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pr-dot 1.6s ease-in-out infinite"></span>
+        <span style="color:var(--tx)">PIXEL<span style="color:var(--acc)">RAZER</span></span>
+      </a>
+      <div style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:13px">
+        <a href="./Write-up.html" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/write-ups</a>
+        <a href="./index.html#focus" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/focus</a>
+        <a href="./redteam.html" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/red-team</a>
+        <a href="./index.html#contact" style="margin-left:8px;padding:9px 16px;border-radius:8px;color:var(--tx);border:1px solid var(--acc);background:rgba(255,45,117,.08);transition:background .25s,box-shadow .25s" onMouseOver="this.style.background='rgba(255,45,117,.2)';this.style.boxShadow='0 0 22px rgba(255,45,117,.35)'" onMouseOut="this.style.background='rgba(255,45,117,.08)';this.style.boxShadow='none'">contact</a>
+      </div>
     </nav>
     <section class="write-ups">
         <h1>Write-Ups</h1>   
