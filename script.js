@@ -1,5 +1,3 @@
-// Enhanced Portfolio JavaScript with Simplified Interactions
-
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize all features
     initSmoothScrolling();

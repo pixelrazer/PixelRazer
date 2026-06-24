@@ -1,41 +1,361 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixelrazer Portfolio</title>
-    <link rel="stylesheet" href="style.css">
-    <script defer src="script.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
 </head>
 <body>
-    <div class="container">
-        <nav class="navbar">
-            <ul class="nav-links">
-                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
-                <li><a href="Write-up.html"><i class="fas fa-file-alt"></i> Write-Ups</a></li>
-                <li><a href="redteam.html"><i class="fas fa-user-secret"></i> Red Team</a></li>
-            </ul>
-        </nav>
-        <section id="home" class="hero">
-            <h1>Welcome to Pixelrazer's Portfolio</h1>
-        </section>
-        <div class="htb-banner">
-            <a href="https://app.hackthebox.com/users/profile/481303" class="htb-badge">
-                <img src="https://www.hackthebox.com/badge/image/481303" alt="pixelrazer">
-            </a>
-        </div>  
-        <section class="about">
-            <h1>About Me</h1>
-            <p>
-                Entry Red-Team Specialist & Active Directory Security Enthusiast
-            </p>
-            <ul>
-                <li>CPTS (Certified Penetration Tester Specialist)</li>
-                <li>CRTO (Certified Red Team Operator)</li>
-                <li>Python, C, Bash</li>
-            </ul>
-        </section>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:#0a0a0f;color:#f2f2f5;font-family:'Manrope',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:#ff2d75;color:#0a0a0f}
+  ::-webkit-scrollbar{width:9px}
+  ::-webkit-scrollbar-track{background:#0a0a0f}
+  ::-webkit-scrollbar-thumb{background:#2a2a36;border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:#ff2d75}
+  a{color:inherit;text-decoration:none}
+  @keyframes pr-blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  @keyframes pr-scan{0%{transform:translateY(-100%)}100%{transform:translateY(700%)}}
+  @keyframes pr-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  @keyframes pr-grid{0%{background-position:0 0}100%{background-position:46px 46px}}
+  @keyframes pr-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes pr-flow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+  @keyframes pr-dot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.55);opacity:.5}}
+  @keyframes pr-mark{0%{stroke-dashoffset:120}100%{stroke-dashoffset:0}}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms!important;scroll-behavior:auto}}
+</style>
+</helmet>
+<div style="--acc:#ff2d75;--acc2:#8b5cff;--ok:#2ee6a6;--bg:#0a0a0f;--bg1:#101017;--bg2:#15151e;--bd:rgba(255,255,255,.08);--tx:#f2f2f5;--dim:#9a9aa8;--mut:#5c5c69;position:relative;width:100%;min-height:100vh;background:var(--bg);overflow:hidden">
+
+  <div style="position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);background-size:46px 46px;animation:pr-grid 9s linear infinite"></div>
+  <div style="position:fixed;top:-12%;left:-8%;width:48vw;height:48vw;z-index:0;pointer-events:none;background:radial-gradient(circle,rgba(255,45,117,.14),transparent 62%);filter:blur(20px)"></div>
+  <div style="position:fixed;bottom:-18%;right:-10%;width:52vw;height:52vw;z-index:0;pointer-events:none;background:radial-gradient(circle,rgba(139,92,255,.13),transparent 62%);filter:blur(20px)"></div>
+
+  <nav style="position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px clamp(20px,5vw,56px);background:rgba(10,10,15,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)">
+    <a href="#top" style="display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;letter-spacing:1px">
+      <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pr-dot 1.6s ease-in-out infinite"></span>
+      <span style="color:var(--tx)">PIXEL<span style="color:var(--acc)">RAZER</span></span>
+    </a>
+    <div style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:13px">
+      <a href="#work" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/write-ups</a>
+      <a href="#focus" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/focus</a>
+      <a href="./redteam.html" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/red-team</a>
+      <a href="#contact" style="margin-left:8px;padding:9px 16px;border-radius:8px;color:var(--tx);border:1px solid var(--acc);background:rgba(255,45,117,.08);transition:background .25s,box-shadow .25s" onMouseOver="this.style.background='rgba(255,45,117,.2)';this.style.boxShadow='0 0 22px rgba(255,45,117,.35)'" onMouseOut="this.style.background='rgba(255,45,117,.08)';this.style.boxShadow='none'">contact</a>
     </div>
+  </nav>
+
+  <main id="top" style="position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 clamp(20px,5vw,56px)">
+
+    <!-- HERO -->
+    <section style="display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;min-height:100vh;padding-top:100px;padding-bottom:60px">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)">
+        <div style="display:inline-flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);border:1px solid rgba(255,45,117,.3);background:rgba(255,45,117,.06);padding:7px 13px;border-radius:30px;margin-bottom:26px">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc)"></span>RED TEAM OPERATOR · ACTIVE DIRECTORY
+        </div>
+        <h1 data-headline="1" style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(2.6rem,5.6vw,4.4rem);line-height:1.02;letter-spacing:-.02em;margin-bottom:22px">I break in,<br>so they <span style="background:linear-gradient(110deg,var(--acc),var(--acc2),var(--acc));background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pr-flow 5s linear infinite">can't</span>.</h1>
+        <p style="font-size:1.12rem;line-height:1.65;color:var(--dim);max-width:520px;margin-bottom:32px">Offensive security specialist mapping real attack paths through Active Directory — initial access to domain takeover, documented box by box.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:34px">
+          <a href="#work" style="display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;padding:14px 22px;border-radius:10px;color:#0a0a0f;background:var(--acc);box-shadow:0 8px 30px rgba(255,45,117,.3);transition:transform .25s,box-shadow .25s" onMouseOver="this.style.transform='translateY(-3px)';this.style.boxShadow='0 14px 40px rgba(255,45,117,.45)'" onMouseOut="this.style.transform='none';this.style.boxShadow='0 8px 30px rgba(255,45,117,.3)'">read the write-ups <span style="font-size:16px">→</span></a>
+          <a href="#contact" style="display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;padding:14px 22px;border-radius:10px;color:var(--tx);border:1px solid var(--bd);background:var(--bg2);white-space:nowrap;transition:transform .25s,border-color .25s" onMouseOver="this.style.transform='translateY(-3px)';this.style.borderColor='#8b5cff'" onMouseOut="this.style.transform='none';this.style.borderColor='rgba(255,255,255,.08)'">get in touch</a>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);padding:7px 13px;border:1px solid var(--bd);border-radius:7px;background:var(--bg1)">CPTS</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);padding:7px 13px;border:1px solid var(--bd);border-radius:7px;background:var(--bg1)">CRTO</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);padding:7px 13px;border:1px solid var(--bd);border-radius:7px;background:var(--bg1)">Python · C · Bash</span>
+        </div>
+      </div>
+
+      <!-- portrait + terminal stack -->
+      <div data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);position:relative">
+        <div style="position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--bd);box-shadow:0 30px 80px rgba(0,0,0,.55);animation:pr-float 7s ease-in-out infinite">
+          <img src="anime.png" alt="Pixelrazer" style="display:block;width:100%;height:360px;object-fit:cover;object-position:50% 22%;filter:saturate(1.05) contrast(1.05)">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,15,.15) 0%,transparent 30%,transparent 55%,rgba(10,10,15,.85) 100%)"></div>
+          <div style="position:absolute;left:0;right:0;top:0;height:42px;background:linear-gradient(180deg,rgba(255,45,117,.18),transparent);mix-blend-mode:screen;animation:pr-scan 3.6s linear infinite"></div>
+          <div style="position:absolute;top:12px;left:12px;width:22px;height:22px;border-top:2px solid var(--acc);border-left:2px solid var(--acc);opacity:.8"></div>
+          <div style="position:absolute;top:12px;right:12px;width:22px;height:22px;border-top:2px solid var(--acc);border-right:2px solid var(--acc);opacity:.8"></div>
+          <div style="position:absolute;bottom:12px;left:12px;width:22px;height:22px;border-bottom:2px solid var(--acc);border-left:2px solid var(--acc);opacity:.8"></div>
+          <div style="position:absolute;bottom:12px;right:12px;width:22px;height:22px;border-bottom:2px solid var(--acc);border-right:2px solid var(--acc);opacity:.8"></div>
+          <div style="position:absolute;left:16px;bottom:14px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--dim)">// operator_id: 481303</div>
+        </div>
+
+        <div style="margin-top:14px;border-radius:14px;border:1px solid var(--bd);background:rgba(13,13,19,.9);overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.4)">
+          <div style="display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--bd);background:var(--bg1)">
+            <span style="width:11px;height:11px;border-radius:50%;background:#ff5f57"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#febc2e"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#28c840"></span>
+            <span style="margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">pixelrazer@kali: ~</span>
+          </div>
+          <div data-term="1" style="padding:15px 16px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.5;min-height:128px"></div>
+        </div>
+
+        <sc-if value="{{ available }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;top:-14px;right:-10px;display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:#0a0a0f;background:var(--ok);padding:7px 12px;border-radius:30px;box-shadow:0 8px 26px rgba(46,230,166,.4)">
+            <span style="width:7px;height:7px;border-radius:50%;background:#0a0a0f;animation:pr-dot 1.4s ease-in-out infinite"></span>AVAILABLE FOR HIRE
+          </div>
+        </sc-if>
+      </div>
+    </section>
+
+    <!-- STATS -->
+    <section data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:8px 0 70px">
+      <div style="border:1px solid var(--bd);border-radius:14px;padding:24px;background:linear-gradient(180deg,var(--bg2),var(--bg1))">
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.4rem;color:var(--tx)"><span data-count="8">0</span>+</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);margin-top:4px">machines documented</div>
+      </div>
+      <div style="border:1px solid var(--bd);border-radius:14px;padding:24px;background:linear-gradient(180deg,var(--bg2),var(--bg1))">
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.4rem;color:var(--acc)"><span data-count="2">0</span></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);margin-top:4px">industry certifications</div>
+      </div>
+      <div style="border:1px solid var(--bd);border-radius:14px;padding:24px;background:linear-gradient(180deg,var(--bg2),var(--bg1))">
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.4rem;color:var(--acc2)"><span data-count="100">0</span>%</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);margin-top:4px">hands-on, no theory dumps</div>
+      </div>
+      <div style="border:1px solid var(--bd);border-radius:14px;padding:24px;background:linear-gradient(180deg,var(--bg2),var(--bg1))">
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:2.4rem;color:var(--ok)">AD</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);margin-top:4px">primary battleground</div>
+      </div>
+    </section>
+
+    <!-- FOCUS -->
+    <section id="focus" style="padding:30px 0 80px;scroll-margin-top:90px">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);margin-bottom:38px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);margin-bottom:12px">// 01 — WHERE I OPERATE</div>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(1.9rem,3.6vw,2.7rem);letter-spacing:-.01em;max-width:640px">Entry-level red teamer with an enterprise attacker's mindset.</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        <div data-reveal data-reveal-delay="0" class="pr-focus" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);border:1px solid var(--bd);border-radius:14px;padding:26px 22px;background:var(--bg1)" onMouseOver="this.style.borderColor='rgba(255,45,117,.5)';this.style.transform='translateY(-6px)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.transform='none'">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--acc);margin-bottom:14px">01</div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:1.18rem;margin-bottom:9px">Active Directory</h3>
+          <p style="font-size:.92rem;line-height:1.55;color:var(--dim)">Kerberoasting, ADCS abuse, delegation and ACL paths to domain admin.</p>
+        </div>
+        <div data-reveal data-reveal-delay="80" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);border:1px solid var(--bd);border-radius:14px;padding:26px 22px;background:var(--bg1)" onMouseOver="this.style.borderColor='rgba(139,92,255,.5)';this.style.transform='translateY(-6px)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.transform='none'">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--acc2);margin-bottom:14px">02</div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:1.18rem;margin-bottom:9px">Initial Access</h3>
+          <p style="font-size:.92rem;line-height:1.55;color:var(--dim)">Recon, exposed services and web footholds turned into reliable shells.</p>
+        </div>
+        <div data-reveal data-reveal-delay="160" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);border:1px solid var(--bd);border-radius:14px;padding:26px 22px;background:var(--bg1)" onMouseOver="this.style.borderColor='rgba(46,230,166,.5)';this.style.transform='translateY(-6px)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.transform='none'">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ok);margin-bottom:14px">03</div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:1.18rem;margin-bottom:9px">Privilege Escalation</h3>
+          <p style="font-size:.92rem;line-height:1.55;color:var(--dim)">Local and domain priv-esc across Windows and Linux targets.</p>
+        </div>
+        <div data-reveal data-reveal-delay="240" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);border:1px solid var(--bd);border-radius:14px;padding:26px 22px;background:var(--bg1)" onMouseOver="this.style.borderColor='rgba(255,45,117,.5)';this.style.transform='translateY(-6px)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.transform='none'">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--acc);margin-bottom:14px">04</div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:1.18rem;margin-bottom:9px">C2 &amp; Evasion</h3>
+          <p style="font-size:.92rem;line-height:1.55;color:var(--dim)">Operating with tradecraft — tooling, OPSEC and staying quiet.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK -->
+    <section id="work" style="padding:30px 0 80px;scroll-margin-top:90px">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:34px">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);margin-bottom:12px">// 02 — SELECTED WRITE-UPS</div>
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(1.9rem,3.6vw,2.7rem);letter-spacing:-.01em">Attack paths, start to finish.</h2>
+        </div>
+        <a href="../uploads/Write-up.html" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--dim);border-bottom:1px solid var(--bd);padding-bottom:3px;transition:color .25s,border-color .25s" onMouseOver="this.style.color='#ff2d75';this.style.borderColor='#ff2d75'" onMouseOut="this.style.color='#9a9aa8';this.style.borderColor='rgba(255,255,255,.08)'">view all →</a>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
+        <sc-for list="{{ writeups }}" as="box" hint-placeholder-count="6">
+          <a href="{{ box.href }}" data-reveal data-reveal-delay="{{ box.delay }}" style="opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1),border-color .3s,box-shadow .3s;display:block;border:1px solid var(--bd);border-radius:16px;overflow:hidden;background:var(--bg1)" onMouseOver="this.style.borderColor=this.getAttribute('data-acc');this.style.boxShadow='0 18px 50px rgba(0,0,0,.45)';this.style.transform='translateY(-8px)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.boxShadow='none';this.style.transform='none'" data-acc="{{ box.color }}">
+            <div style="position:relative;height:130px;background-color:var(--bg2);display:flex;align-items:flex-end;padding:16px;overflow:hidden">
+              <img src="{{ box.img }}" alt="{{ box.name }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,15,.15) 0%,transparent 35%,rgba(10,10,15,.85) 100%)"></div>
+              <div style="position:absolute;top:0;left:0;right:0;height:2px;background:{{ box.color }}"></div>
+              <div style="position:absolute;top:13px;right:14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:1px;color:{{ box.color }};border:1px solid {{ box.color }};padding:3px 8px;border-radius:20px">{{ box.diff }}</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mut)">{{ box.os }}</div>
+            </div>
+            <div style="padding:18px 18px 22px">
+              <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:1.3rem;margin-bottom:7px;color:var(--tx)">{{ box.name }}</h3>
+              <p style="font-size:.9rem;line-height:1.5;color:var(--dim);margin-bottom:14px">{{ box.tag }}</p>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ box.color }}">read write-up →</div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ABOUT + HTB -->
+    <section style="display:grid;grid-template-columns:1.3fr .7fr;gap:24px;padding:20px 0 90px;align-items:stretch">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);border:1px solid var(--bd);border-radius:18px;padding:40px;background:linear-gradient(150deg,var(--bg2),var(--bg1))">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);margin-bottom:14px">// 03 — ABOUT</div>
+        <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(1.7rem,3vw,2.2rem);letter-spacing:-.01em;margin-bottom:18px">Self-driven, lab-hardened, ready for the SOC's other side.</h2>
+        <p style="font-size:1.05rem;line-height:1.7;color:var(--dim);max-width:560px">I'm an entry-level red team specialist obsessed with Active Directory security. Every machine I touch becomes a documented attack chain — clear methodology, real commands, and the reasoning behind each move. I'm looking for a junior offensive-security or pentest role where I can keep breaking things responsibly.</p>
+      </div>
+      <a href="https://app.hackthebox.com/users/481303" target="_blank" rel="noopener" data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),box-shadow .3s,border-color .3s;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;border:1px solid var(--bd);border-radius:18px;padding:32px;background:radial-gradient(circle at 50% 0%,rgba(159,239,0,.06),var(--bg1))" onMouseOver="this.style.borderColor='#9fef00';this.style.boxShadow='0 0 40px rgba(159,239,0,.15)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.boxShadow='none'">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:#9fef00">HACK THE BOX</div>
+        <img src="https://www.hackthebox.com/badge/image/481303" alt="HackTheBox badge for pixelrazer" style="width:100%;max-width:260px;border-radius:10px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim)">view live profile →</div>
+      </a>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);scroll-margin-top:90px;text-align:center;border:1px solid var(--bd);border-radius:20px;padding:64px 32px;margin-bottom:50px;background:radial-gradient(circle at 50% 120%,rgba(255,45,117,.12),var(--bg1))">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);margin-bottom:18px">// LET'S TALK</div>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(2rem,4.4vw,3.2rem);letter-spacing:-.02em;margin-bottom:18px">Hiring offensive security?</h2>
+      <p style="font-size:1.1rem;line-height:1.6;color:var(--dim);max-width:520px;margin:0 auto 32px">I'd love to talk red team, pentesting, or AD security. Reach out and I'll send my full résumé.</p>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px">
+        <a href="mailto:pixelrazer@proton.me" style="display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:14px;padding:14px 24px;border-radius:10px;color:#0a0a0f;background:var(--acc);box-shadow:0 8px 30px rgba(255,45,117,.3);transition:transform .25s,box-shadow .25s" onMouseOver="this.style.transform='translateY(-3px)';this.style.boxShadow='0 14px 40px rgba(255,45,117,.45)'" onMouseOut="this.style.transform='none';this.style.boxShadow='0 8px 30px rgba(255,45,117,.3)'">email me</a>
+        <a href="https://app.hackthebox.com/users/481303" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:14px;padding:14px 24px;border-radius:10px;color:var(--tx);border:1px solid var(--bd);background:var(--bg2);transition:transform .25s,border-color .25s" onMouseOver="this.style.transform='translateY(-3px)';this.style.borderColor='#9fef00'" onMouseOut="this.style.transform='none';this.style.borderColor='rgba(255,255,255,.08)'">HackTheBox</a>
+        <a href="https://github.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:14px;padding:14px 24px;border-radius:10px;color:var(--tx);border:1px solid var(--bd);background:var(--bg2);transition:transform .25s,border-color .25s" onMouseOver="this.style.transform='translateY(-3px)';this.style.borderColor='#8b5cff'" onMouseOut="this.style.transform='none';this.style.borderColor='rgba(255,255,255,.08)'">GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer style="position:relative;z-index:1;border-top:1px solid var(--bd);padding:26px clamp(20px,5vw,56px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut)">
+    <span>© 2026 PIXELRAZER — built to break things.</span>
+    <span style="display:inline-flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pr-dot 1.6s ease-in-out infinite"></span>systems nominal</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;motion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;lively&quot;,&quot;options&quot;:[&quot;lively&quot;,&quot;subtle&quot;,&quot;off&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;availableForWork&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const writeups = [
+      { name: 'Darkzero',  os: 'Windows',       diff: 'HARD',   tag: 'Active Directory takeover via exposed services.', href: './darkzero.html', color: '#8b5cff', delay: 0,  img: 'images/darkzero.png' },
+      { name: 'Vintage',   os: 'Windows · AD',  diff: 'HARD',   tag: 'ADCS abuse and Kerberos delegation chain.',       href: './Vintage.html',  color: '#ff2d75', delay: 80, img: 'images/Vintage.png' },
+      { name: 'Sizzle',    os: 'Windows · AD',  diff: 'INSANE', tag: 'Certificate theft to full domain compromise.',     href: './sizzle.html',   color: '#2ee6a6', delay: 160, img: 'Sizzle.png' },
+      { name: 'Puppet',    os: 'Mixed',         diff: 'MEDIUM', tag: 'Pivoting across a segmented environment.',          href: './puppet.html',   color: '#8b5cff', delay: 0,  img: 'images/puppet-banner.png' },
+      { name: 'Build',     os: 'Linux',         diff: 'MEDIUM', tag: 'Web foothold into a clear privilege-escalation.',   href: './Build.html',    color: '#ff2d75', delay: 80, img: 'images/build.png' },
+      { name: 'Sync',      os: 'Linux',         diff: 'MEDIUM', tag: 'Recon-led entry and root via misconfig.',           href: './Sync.html',     color: '#2ee6a6', delay: 160, img: 'images/Sync.png' },
+    ];
+    return {
+      writeups,
+      available: this.props.availableForWork ?? true,
+    };
+  }
+
+  componentDidMount() {
+    this._alive = true;
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const motion = this.props.motion ?? 'lively';
+    const root = this.el || document;
+
+    // --- scroll reveal ---
+    const targets = root.querySelectorAll('[data-reveal]');
+    const revealNow = (el) => { el.style.opacity = '1'; el.style.transform = 'none'; };
+    if (motion === 'off' || reduced || !('IntersectionObserver' in window)) {
+      targets.forEach(revealNow);
+    } else {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            const d = parseInt(e.target.getAttribute('data-reveal-delay') || '0', 10);
+            e.target.style.transitionDelay = d + 'ms';
+            revealNow(e.target);
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+      targets.forEach((t) => io.observe(t));
+      // safety: nothing stays hidden
+      this._safety = setTimeout(() => targets.forEach(revealNow), 2200);
+    }
+
+    // --- count up ---
+    const counters = root.querySelectorAll('[data-count]');
+    const runCount = (el) => {
+      const end = parseInt(el.getAttribute('data-count'), 10);
+      if (motion === 'off' || reduced) { el.textContent = end; return; }
+      const dur = 1100; const t0 = performance.now();
+      const step = (now) => {
+        const p = Math.min((now - t0) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(end * eased);
+        if (p < 1 && this._alive) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+    if ('IntersectionObserver' in window && motion !== 'off' && !reduced) {
+      const cio = new IntersectionObserver((entries) => {
+        entries.forEach((e) => { if (e.isIntersecting) { runCount(e.target); cio.unobserve(e.target); } });
+      }, { threshold: 0.6 });
+      counters.forEach((c) => cio.observe(c));
+    } else {
+      counters.forEach(runCount);
+    }
+
+    // --- terminal typing ---
+    const term = document.querySelector('[data-term]');
+    if (term) this.runTerminal(term, motion === 'off' || reduced);
+
+    // --- headline scramble ---
+    const h = document.querySelector('[data-headline]');
+    if (h && motion === 'lively' && !reduced) this.scramble(h.querySelector('span') || h);
+  }
+
+  componentWillUnmount() {
+    this._alive = false;
+    if (this._safety) clearTimeout(this._safety);
+  }
+
+  wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  async typeInto(span, text, speed) {
+    for (let i = 0; i < text.length; i++) {
+      if (!this._alive) return;
+      span.textContent += text[i];
+      await this.wait(speed);
+    }
+  }
+
+  async runTerminal(el, instant) {
+    const lines = [
+      { k: 'cmd', t: 'whoami' },
+      { k: 'out', t: 'pixelrazer · red team operator' },
+      { k: 'cmd', t: 'cat ./certs.txt' },
+      { k: 'out', t: 'CPTS · CRTO' },
+      { k: 'cmd', t: './engage --target ad.corp.local' },
+      { k: 'ok',  t: '[+] foothold established — shell popped' },
+    ];
+    el.innerHTML = '';
+    for (const ln of lines) {
+      if (!this._alive) return;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;white-space:pre-wrap;margin:3px 0';
+      const pre = document.createElement('span');
+      if (ln.k === 'cmd') { pre.textContent = '$'; pre.style.color = '#ff2d75'; }
+      else { pre.textContent = ' '; pre.style.width = '7px'; }
+      const span = document.createElement('span');
+      span.style.color = ln.k === 'cmd' ? '#f2f2f5' : (ln.k === 'ok' ? '#2ee6a6' : '#9a9aa8');
+      row.appendChild(pre); row.appendChild(span); el.appendChild(row);
+      if (instant) { span.textContent = ln.t; }
+      else { await this.typeInto(span, ln.t, ln.k === 'cmd' ? 30 : 12); await this.wait(ln.k === 'cmd' ? 150 : 90); }
+    }
+    if (this._alive) {
+      const cur = document.createElement('span');
+      cur.textContent = '▋';
+      cur.style.cssText = 'color:#2ee6a6;animation:pr-blink 1s step-end infinite';
+      const last = document.createElement('div');
+      last.style.cssText = 'display:flex;gap:8px;margin-top:3px';
+      const p = document.createElement('span'); p.textContent = '$'; p.style.color = '#ff2d75';
+      last.appendChild(p); last.appendChild(cur); el.appendChild(last);
+    }
+  }
+
+  async scramble(el) {
+    const final = el.textContent;
+    const chars = '!<>-_\\/[]{}=+*^?#01';
+    const rnd = () => chars[Math.floor(Math.random() * chars.length)];
+    for (let frame = 0; frame <= final.length * 2; frame++) {
+      if (!this._alive) { el.textContent = final; return; }
+      const settled = Math.floor(frame / 2);
+      let out = '';
+      for (let i = 0; i < final.length; i++) out += i < settled ? final[i] : rnd();
+      el.textContent = out;
+      await this.wait(38);
+    }
+    el.textContent = final;
+  }
+}
+</script>
 </body>
 </html>
