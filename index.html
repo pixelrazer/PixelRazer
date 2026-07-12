@@ -161,7 +161,7 @@
           <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);margin-bottom:12px">// 02 — SELECTED WRITE-UPS</div>
           <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(1.9rem,3.6vw,2.7rem);letter-spacing:-.01em">Attack paths, start to finish.</h2>
         </div>
-        <a href="../uploads/Write-up.html" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--dim);border-bottom:1px solid var(--bd);padding-bottom:3px;transition:color .25s,border-color .25s" onMouseOver="this.style.color='#ff2d75';this.style.borderColor='#ff2d75'" onMouseOut="this.style.color='#9a9aa8';this.style.borderColor='rgba(255,255,255,.08)'">view all →</a>
+        <a href="/Write-up.html" style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--dim);border-bottom:1px solid var(--bd);padding-bottom:3px;transition:color .25s,border-color .25s" onMouseOver="this.style.color='#ff2d75';this.style.borderColor='#ff2d75'" onMouseOut="this.style.color='#9a9aa8';this.style.borderColor='rgba(255,255,255,.08)'">view all →</a>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px">
@@ -189,7 +189,7 @@
       <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1);border:1px solid var(--bd);border-radius:18px;padding:40px;background:linear-gradient(150deg,var(--bg2),var(--bg1))">
         <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:var(--acc);margin-bottom:14px">// 03 — ABOUT</div>
         <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(1.7rem,3vw,2.2rem);letter-spacing:-.01em;margin-bottom:18px">Self-driven, lab-hardened, ready for the SOC's other side.</h2>
-        <p style="font-size:1.05rem;line-height:1.7;color:var(--dim);max-width:560px">I'm an entry-level red team specialist obsessed with Active Directory security. Every machine I touch becomes a documented attack chain — clear methodology, real commands, and the reasoning behind each move. I'm looking for a junior offensive-security or pentest role where I can keep breaking things responsibly.</p>
+        <p style="font-size:1.05rem;line-height:1.7;color:var(--dim);max-width:560px">I'm an entry-level red team specialist obsessed with Active Directory security. Every machine I touch becomes a documented attack chain clear methodology, real commands, and the reasoning behind each move. I'm looking for a junior offensive-security or pentest role where I can keep breaking things responsibly.</p>
       </div>
       <a href="https://app.hackthebox.com/users/481303" target="_blank" rel="noopener" data-reveal data-reveal-delay="120" style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1),box-shadow .3s,border-color .3s;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;border:1px solid var(--bd);border-radius:18px;padding:32px;background:radial-gradient(circle at 50% 0%,rgba(159,239,0,.06),var(--bg1))" onMouseOver="this.style.borderColor='#9fef00';this.style.boxShadow='0 0 40px rgba(159,239,0,.15)'" onMouseOut="this.style.borderColor='rgba(255,255,255,.08)';this.style.boxShadow='none'">
         <div style="font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;color:#9fef00">HACK THE BOX</div>
@@ -221,12 +221,12 @@
 class Component extends DCLogic {
   renderVals() {
     const writeups = [
+      { name: 'GhostLink',  os: 'Windows',       diff: 'HARD',   tag: 'From IoT telemetry to Domain Admin.', href: './ghostlink.html', color: '#8b5cff', delay: 0,  img: 'images/ghostlink-banner.png' },
       { name: 'Darkzero',  os: 'Windows',       diff: 'HARD',   tag: 'Active Directory takeover via exposed services.', href: './darkzero.html', color: '#8b5cff', delay: 0,  img: 'images/darkzero.png' },
       { name: 'Vintage',   os: 'Windows · AD',  diff: 'HARD',   tag: 'ADCS abuse and Kerberos delegation chain.',       href: './Vintage.html',  color: '#ff2d75', delay: 80, img: 'images/Vintage.png' },
       { name: 'Sizzle',    os: 'Windows · AD',  diff: 'INSANE', tag: 'Certificate theft to full domain compromise.',     href: './sizzle.html',   color: '#2ee6a6', delay: 160, img: 'Sizzle.png' },
       { name: 'Puppet',    os: 'Mixed',         diff: 'MEDIUM', tag: 'Pivoting across a segmented environment.',          href: './puppet.html',   color: '#8b5cff', delay: 0,  img: 'images/puppet-banner.png' },
       { name: 'Build',     os: 'Linux',         diff: 'MEDIUM', tag: 'Web foothold into a clear privilege-escalation.',   href: './Build.html',    color: '#ff2d75', delay: 80, img: 'images/build.png' },
-      { name: 'Sync',      os: 'Linux',         diff: 'MEDIUM', tag: 'Recon-led entry and root via misconfig.',           href: './Sync.html',     color: '#2ee6a6', delay: 160, img: 'images/Sync.png' },
     ];
     return {
       writeups,

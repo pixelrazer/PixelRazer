@@ -382,8 +382,17 @@ code {
   max-width: 600px;
 }
 
-.small-to-big-image img {
-  max-width: 100%;
+.contents .small-to-big-image {
+  position: relative;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+}
+
+.contents .small-to-big-image img {
+  width: 57.4vw;
+  margin: 0 auto;
+  display: block;
+  max-width: none;
 }
 
 /* ── Responsive ── */

