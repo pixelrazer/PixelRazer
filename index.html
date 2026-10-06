@@ -31,6 +31,30 @@
   @keyframes pr-dot{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.55);opacity:.5}}
   @keyframes pr-mark{0%{stroke-dashoffset:120}100%{stroke-dashoffset:0}}
   @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms!important;scroll-behavior:auto}}
+
+  .nav-toggle-input{position:absolute;opacity:0;pointer-events:none}
+  .nav-toggle-label{display:none;cursor:pointer;flex-direction:column;gap:5px;padding:8px}
+  .nav-toggle-label span{display:block;width:22px;height:2px;background:#f2f2f5;border-radius:2px;transition:transform .3s,opacity .3s}
+  #nav-toggle:checked+.nav-toggle-label>span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+  #nav-toggle:checked+.nav-toggle-label>span:nth-child(2){opacity:0}
+  #nav-toggle:checked+.nav-toggle-label>span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+  @media(max-width:768px){
+    nav{flex-wrap:wrap!important}
+    .nav-toggle-label{display:flex!important}
+    .nav-toggle-input:not(:checked)+.nav-toggle-label+div{display:none!important}
+    .nav-toggle-input:checked+.nav-toggle-label+div{display:flex!important;flex-direction:column!important;align-items:center!important;width:100%!important;order:3!important;padding-top:12px!important;gap:4px!important}
+    main>section:nth-of-type(1){grid-template-columns:1fr!important;gap:32px!important;min-height:auto!important}
+    main>section:nth-of-type(2){grid-template-columns:repeat(2,1fr)!important}
+    #focus>div:last-child{grid-template-columns:repeat(2,1fr)!important}
+    #work>div:last-child{grid-template-columns:1fr!important}
+    main>section:nth-of-type(5){grid-template-columns:1fr!important}
+    main>section:nth-of-type(1) sc-if{display:none!important}
+  }
+  @media(max-width:480px){
+    main>section:nth-of-type(2){grid-template-columns:1fr!important}
+    #focus>div:last-child{grid-template-columns:1fr!important}
+    main>section:nth-of-type(1) img{height:240px!important}
+  }
 </style>
 </helmet>
 <div style="--acc:#ff2d75;--acc2:#8b5cff;--ok:#2ee6a6;--bg:#0a0a0f;--bg1:#101017;--bg2:#15151e;--bd:rgba(255,255,255,.08);--tx:#f2f2f5;--dim:#9a9aa8;--mut:#5c5c69;position:relative;width:100%;min-height:100vh;background:var(--bg);overflow:hidden">
@@ -44,6 +68,10 @@
       <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pr-dot 1.6s ease-in-out infinite"></span>
       <span style="color:var(--tx)">PIXEL<span style="color:var(--acc)">RAZER</span></span>
     </a>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-input">
+    <label for="nav-toggle" class="nav-toggle-label">
+      <span></span><span></span><span></span>
+    </label>
     <div style="display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:13px">
       <a href="#work" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/write-ups</a>
       <a href="#focus" style="padding:9px 15px;border-radius:8px;color:var(--dim);transition:color .25s,background .25s" onMouseOver="this.style.color='#f2f2f5';this.style.background='rgba(255,255,255,.05)'" onMouseOut="this.style.color='#9a9aa8';this.style.background='transparent'">~/focus</a>
@@ -212,7 +240,7 @@
   </main>
 
   <footer style="position:relative;z-index:1;border-top:1px solid var(--bd);padding:26px clamp(20px,5vw,56px);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut)">
-    <span>© 2026 PIXELRAZER — built to break things.</span>
+    <span>© 2026 PIXELRAZER built to break things.</span>
     <span style="display:inline-flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pr-dot 1.6s ease-in-out infinite"></span>systems nominal</span>
   </footer>
 </div>
@@ -358,5 +386,6 @@ class Component extends DCLogic {
   }
 }
 </script>
+<script>document.querySelectorAll('nav a').forEach(function(a){a.addEventListener('click',function(){var cb=document.getElementById('nav-toggle');if(cb)cb.checked=false})});</script>
 </body>
 </html>

@@ -1,255 +1,142 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize all features
-    initSmoothScrolling();
-    initNavbarEffects();
-    initAnimationsOnScroll();
-    initTypingEffect();
-    initProgressBars();
+/* PIXELRAZER — shared behaviour for write-up / listing / red-team pages.
+   The landing page (index.html) runs its own DC runtime and does not use this. */
+
+document.addEventListener('DOMContentLoaded', function () {
+  initMobileNav();
+  initScrollReveal();
+  initReadingProgress();
+  initBackToTop();
+  initCodeCopy();
 });
 
-// Smooth scrolling with easing
-function initSmoothScrolling() {
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        const href = link.getAttribute('href');
-        if (href.startsWith('#')) {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                const targetId = href.substring(1);
-                const targetElement = document.getElementById(targetId);
+/* ── Mobile nav ──
+   The sub-page <nav> ships without a hamburger; inject the toggle + label so
+   the CSS drawer rules (.nav-toggle-input:checked + label + div) kick in. */
+function initMobileNav() {
+  var nav = document.querySelector('nav');
+  if (!nav || nav.querySelector('.nav-toggle-input')) return;
 
-                if (targetElement) {
-                    const offsetTop = targetElement.offsetTop - 80;
-                    
-                    window.scrollTo({
-                        top: offsetTop,
-                        behavior: 'smooth'
-                    });
-                    
-                    // Add active state
-                    document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
-                    link.classList.add('active');
-                }
-            });
-        }
+  var linksDiv = nav.querySelector('div');
+  if (!linksDiv) return;
+
+  var checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.id = 'nav-toggle-sub';
+  checkbox.className = 'nav-toggle-input';
+
+  var label = document.createElement('label');
+  label.htmlFor = 'nav-toggle-sub';
+  label.className = 'nav-toggle-label';
+  label.setAttribute('aria-label', 'Toggle navigation');
+  label.innerHTML = '<span></span><span></span><span></span>';
+
+  nav.insertBefore(checkbox, linksDiv);
+  nav.insertBefore(label, linksDiv);
+
+  linksDiv.querySelectorAll('a').forEach(function (a) {
+    a.addEventListener('click', function () { checkbox.checked = false; });
+  });
+}
+
+/* ── Scroll reveal ──
+   Opt-in and JS-safe: we only add the hidden state from script, so if JS never
+   runs (or IntersectionObserver / reduced-motion), everything stays visible. */
+function initScrollReveal() {
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var targets = document.querySelectorAll('.contents .snippet, .contents figure, .contents img, [data-reveal]');
+  if (!targets.length) return;
+
+  if (reduced || !('IntersectionObserver' in window)) {
+    targets.forEach(function (el) { el.classList.add('reveal-in'); });
+    return;
+  }
+
+  targets.forEach(function (el) { el.classList.add('reveal-init'); });
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        e.target.classList.add('reveal-in');
+        io.unobserve(e.target);
+      }
     });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+  targets.forEach(function (el) { io.observe(el); });
+
+  // Safety net: never leave content hidden if something stalls.
+  setTimeout(function () {
+    targets.forEach(function (el) { el.classList.add('reveal-in'); });
+  }, 2600);
 }
 
-// Enhanced navbar effects
-function initNavbarEffects() {
-    const navbar = document.querySelector('.navbar');
-    const navLinks = document.querySelectorAll('.nav-links a');
-    let lastScrollY = window.scrollY;
+/* ── Reading progress bar (write-up pages only) ── */
+function initReadingProgress() {
+  if (!document.querySelector('.contents')) return;
 
-    function updateNavbar() {
-        const currentScrollY = window.scrollY;
-        
-        // Change navbar background opacity
-        const opacity = Math.min(currentScrollY / 100, 0.95);
-        navbar.style.background = `rgba(10, 10, 10, ${opacity})`;
-        
-        // Update active nav link based on scroll position
-        updateActiveNavLink();
-        
-        lastScrollY = currentScrollY;
-    }
+  var bar = document.createElement('div');
+  bar.className = 'reading-progress';
+  document.body.appendChild(bar);
 
-    function updateActiveNavLink() {
-        const fromTop = window.scrollY + 100;
-        
-        navLinks.forEach(link => {
-            const href = link.getAttribute('href');
-            if (href.startsWith('#')) {
-                const section = document.querySelector(href);
-                if (section) {
-                    if (
-                        section.offsetTop <= fromTop &&
-                        section.offsetTop + section.offsetHeight > fromTop
-                    ) {
-                        navLinks.forEach(l => l.classList.remove('active'));
-                        link.classList.add('active');
-                    }
-                }
-            }
-        });
-    }
+  function update() {
+    var doc = document.documentElement;
+    var scrolled = doc.scrollTop || document.body.scrollTop;
+    var max = doc.scrollHeight - doc.clientHeight;
+    bar.style.width = (max > 0 ? (scrolled / max) * 100 : 0) + '%';
+  }
 
-    window.addEventListener('scroll', updateNavbar);
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
 }
 
-// Animations on scroll (AOS alternative)
-function initAnimationsOnScroll() {
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
+/* ── Back-to-top button ── */
+function initBackToTop() {
+  var btn = document.createElement('button');
+  btn.className = 'back-to-top';
+  btn.type = 'button';
+  btn.setAttribute('aria-label', 'Back to top');
+  btn.innerHTML = '&uarr;';
+  document.body.appendChild(btn);
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('animate-in');
-                
-                // Special handling for write-up cards
-                if (entry.target.classList.contains('write-up-card')) {
-                    const delay = Array.from(entry.target.parentNode.children).indexOf(entry.target) * 100;
-                    entry.target.style.animationDelay = `${delay}ms`;
-                }
-            }
-        });
-    }, observerOptions);
+  btn.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
-    // Observe elements for animation
-    const animatableElements = document.querySelectorAll(`
-        .write-up-card,
-        .about,
-        .skill-category,
-        .stat-item,
-        .htb-banner
-    `);
+  function toggle() {
+    btn.classList.toggle('is-visible', window.scrollY > 600);
+  }
+  window.addEventListener('scroll', toggle, { passive: true });
+  toggle();
+}
 
-    animatableElements.forEach(el => {
-        el.classList.add('animate-target');
-        observer.observe(el);
+/* ── Copy buttons on code blocks ── */
+function initCodeCopy() {
+  if (!navigator.clipboard) return;
+
+  document.querySelectorAll('.snippet').forEach(function (snippet) {
+    var code = snippet.querySelector('.code-block');
+    if (!code) return;
+
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'copy';
+
+    btn.addEventListener('click', function () {
+      navigator.clipboard.writeText(code.textContent).then(function () {
+        btn.textContent = 'copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'copy';
+          btn.classList.remove('copied');
+        }, 1600);
+      }).catch(function () {
+        btn.textContent = 'error';
+        setTimeout(function () { btn.textContent = 'copy'; }, 1600);
+      });
     });
+
+    snippet.appendChild(btn);
+  });
 }
-
-// Remove the particle background function entirely
-// Typing effect for hero subtitle
-function initTypingEffect() {
-    const subtitle = document.querySelector('.hero-subtitle p');
-    if (!subtitle) return;
-    
-    const text = subtitle.textContent;
-    subtitle.textContent = '';
-    subtitle.style.opacity = '1';
-    
-    let i = 0;
-    function typeWriter() {
-        if (i < text.length) {
-            subtitle.textContent += text.charAt(i);
-            i++;
-            setTimeout(typeWriter, 50);
-        } else {
-            // Add blinking cursor
-            subtitle.innerHTML += '<span class="cursor">|</span>';
-        }
-    }
-    
-    // Start typing after hero animation
-    setTimeout(typeWriter, 1500);
-}
-
-// Progress bars for skills
-function initProgressBars() {
-    const skillItems = document.querySelectorAll('.skill-category li');
-    
-    skillItems.forEach(item => {
-        const progressBar = document.createElement('div');
-        progressBar.className = 'skill-progress';
-        progressBar.innerHTML = '<div class="skill-progress-fill"></div>';
-        item.appendChild(progressBar);
-        
-        // Random progress for demo
-        const progress = Math.random() * 40 + 60; // 60-100%
-        const fill = progressBar.querySelector('.skill-progress-fill');
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    setTimeout(() => {
-                        fill.style.width = `${progress}%`;
-                    }, 500);
-                    observer.unobserve(entry.target);
-                }
-            });
-        });
-        
-        observer.observe(item);
-    });
-}
-
-// Add CSS for animations and effects
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-    .animate-target {
-        opacity: 0;
-        transform: translateY(30px);
-        transition: all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
-    }
-    
-    .animate-target.animate-in {
-        opacity: 1;
-        transform: translateY(0);
-    }
-    
-    .cursor {
-        animation: blink 1s infinite;
-        color: var(--accent-color);
-    }
-    
-    @keyframes blink {
-        0%, 50% { opacity: 1; }
-        51%, 100% { opacity: 0; }
-    }
-    
-    .skill-progress {
-        width: 100%;
-        height: 4px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 2px;
-        margin-top: 8px;
-        overflow: hidden;
-    }
-    
-    .skill-progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--accent-color), #4facfe);
-        border-radius: 2px;
-        width: 0%;
-        transition: width 1s cubic-bezier(0.4, 0.0, 0.2, 1);
-        position: relative;
-    }
-    
-    .skill-progress-fill::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        animation: shimmer 2s infinite;
-    }
-    
-    @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-    }
-    
-    .nav-links a.active {
-        color: var(--accent-color);
-        background: rgba(99, 102, 241, 0.15);
-        border-radius: 8px;
-    }
-    
-    /* Smooth transitions for all interactive elements */
-    * {
-        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-    }
-    
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-        .animate-target {
-            transition: none;
-        }
-        
-        .cursor {
-            animation: none;
-        }
-        
-        .skill-progress-fill::after {
-            animation: none;
-        }
-    }
-`;
-
-document.head.appendChild(styleSheet);

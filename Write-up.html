@@ -25,69 +25,106 @@
       </div>
     </nav>
     <section class="write-ups">
-        <h1>Write-Ups</h1>   
+        <h1>Write-Ups</h1>
+        <p class="subtitle">// full attack chains — recon to domain takeover, documented box by box</p>
         <div class="write-ups-container">
             <a href="ghostlink.html" class="write-up-card">
-                <img src="images/ghostlink-banner.png" alt="Ghostlink Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/ghostlink-banner.png" alt="Ghostlink Box" class="card-image">
+                    <div class="card-badges"><span class="os">Windows · AD</span><span class="diff diff-hard">Hard</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Ghostlink</h3>
-                    <p>An in-depth write-up on the Windows AD box: Ghostlink</p>
+                    <p>From an exposed MQTT broker to full Domain Admin via ESC11.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="darkzero.html" class="write-up-card">
-                <img src="images/darkzero.png" alt="Darkzero Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/darkzero.png" alt="Darkzero Box" class="card-image">
+                    <div class="card-badges"><span class="os">Windows · AD</span><span class="diff diff-hard">Hard</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Darkzero</h3>
-                    <p>An in-depth write-up on the Windows box: Darkzero</p>
+                    <p>Active Directory takeover through exposed services.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="puppet.html" class="write-up-card">
-                <img src="images/puppet-banner.png" alt="Puppet Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/puppet-banner.png" alt="Puppet Box" class="card-image">
+                    <div class="card-badges"><span class="os">Mixed</span><span class="diff diff-medium">Medium</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Puppet</h3>
-                    <p>An in-depth write-up on the Windows/Linux box: Puppet</p>
+                    <p>Pivoting across a segmented Windows/Linux environment.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="Vintage.html" class="write-up-card">
-                <img src="images/Vintage.png" alt="Vintage Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/Vintage.png" alt="Vintage Box" class="card-image">
+                    <div class="card-badges"><span class="os">Windows · AD</span><span class="diff diff-hard">Hard</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Vintage</h3>
-                    <p>An in-depth wriet-up on the Windows box: vintage</p>
+                    <p>ADCS abuse and a Kerberos delegation chain.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="Build.html" class="write-up-card">
-                <img src="images/build.png" alt="Build Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/build.png" alt="Build Box" class="card-image">
+                    <div class="card-badges"><span class="os">Linux</span><span class="diff diff-medium">Medium</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Build</h3>
-                    <p>An in-depth write-up on the linux box: Build.</p>
+                    <p>A web foothold into a clear privilege-escalation path.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="Sync.html" class="write-up-card">
-                <img src="images/Sync.png" alt="Sync Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/Sync.png" alt="Sync Box" class="card-image">
+                    <div class="card-badges"><span class="os">Linux</span><span class="diff diff-medium">Medium</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Sync</h3>
-                    <p>An in-depth write-up on the linux box: Sync.</p>
+                    <p>SQL injection to credential reuse and a root rsync abuse.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="Down.html" class="write-up-card">
-                <img src="images/Down.png" alt="Down Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/Down.png" alt="Down Box" class="card-image">
+                    <div class="card-badges"><span class="os">Linux</span><span class="diff diff-medium">Medium</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Down</h3>
-                    <p>An in-depth write-up on the linux box: Down.</p>
+                    <p>SSRF and command injection into a sudo priv-esc.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="data.html" class="write-up-card">
-                <img src="images/data.png" alt="Data Box" class="card-image">
+                <div class="card-media">
+                    <img src="images/data.png" alt="Data Box" class="card-image">
+                    <div class="card-badges"><span class="os">Linux</span><span class="diff diff-easy">Easy</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Data</h3>
-                    <p>An in-depth write-up on the linux box: Data.</p>
+                    <p>Grafana exposure to a container breakout for root.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
             <a href="sizzle.html" class="write-up-card">
-                <img src="Sizzle.png" alt="Sizzle Box" class="card-image">
+                <div class="card-media">
+                    <img src="Sizzle.png" alt="Sizzle Box" class="card-image">
+                    <div class="card-badges"><span class="os">Windows · AD</span><span class="diff diff-insane">Insane</span></div>
+                </div>
                 <div class="card-content">
                     <h3>Sizzle</h3>
-                    <p>An in-depth write-up on the Windows box: Sizzle.</p>
+                    <p>Certificate theft to full domain compromise.</p>
+                    <span class="read">read write-up →</span>
                 </div>
             </a>
         </div>
